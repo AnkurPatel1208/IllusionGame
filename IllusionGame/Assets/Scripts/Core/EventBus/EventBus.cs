@@ -22,7 +22,6 @@ public static class EventBus<T> where T : struct {
         }
     }
     
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset() {
         EventListeners.Clear();
     }
