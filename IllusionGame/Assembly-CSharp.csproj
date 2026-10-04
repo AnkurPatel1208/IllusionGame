@@ -61,6 +61,9 @@
     <Compile Include="Assets/Scripts/UI/GameUI.cs" />
     <Compile Include="Assets/Scripts/Grid/PuzzleInteractionHandler.cs" />
     <Compile Include="Assets/Scripts/Level/Level1Builder.cs" />
+    <None Include="Assets/Fantastic Dungeon Pack/scenes/README.txt" />
+    <None Include="Assets/___www.unityassetcollection.com___.txt" />
+    <None Include="Assets/Fantastic Dungeon Pack/shaders/S_doublesided_lit_nonormal.shader" />
     <Reference Include="UnityEngine">
       <HintPath>/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine/UnityEngine.dll</HintPath>
     </Reference>
@@ -463,17 +466,32 @@
     <Reference Include="UnityEditor.XRModule">
       <HintPath>/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine/UnityEditor.XRModule.dll</HintPath>
     </Reference>
+    <Reference Include="Zenject-usage">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/Source/Usage/Zenject-usage.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.Collections.LowLevel.ILSupport">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.collections@aea9d3bd5e19/Unity.Collections.LowLevel.ILSupport/Unity.Collections.LowLevel.ILSupport.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.ext.nunit@d8c07649098d/net40/unity-custom/nunit.framework.dll</HintPath>
     </Reference>
+    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Pdb">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Pdb.dll</HintPath>
+    </Reference>
     <Reference Include="System.IO.Hashing">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.collections@aea9d3bd5e19/Unity.Collections.Tests/System.IO.Hashing/System.IO.Hashing.dll</HintPath>
     </Reference>
+    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Rocks">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Rocks.dll</HintPath>
+    </Reference>
     <Reference Include="Unity.VisualScripting.Antlr3.Runtime">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.visualscripting@191c0d7e3b69/Runtime/VisualScripting.Flow/Dependencies/NCalc/Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Mdb">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Mdb.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.nuget.newtonsoft-json@4dfd81071c64/Runtime/Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.nuget.mono-cecil@ecb9724e46ff/Mono.Cecil.dll</HintPath>
@@ -481,23 +499,8 @@
     <Reference Include="System.Runtime.CompilerServices.Unsafe">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.collections@aea9d3bd5e19/Unity.Collections.Tests/System.Runtime.CompilerServices.Unsafe/System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
-    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Rocks">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Rocks.dll</HintPath>
-    </Reference>
-    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Pdb">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Pdb.dll</HintPath>
-    </Reference>
-    <Reference Include="Zenject-usage">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/Source/Usage/Zenject-usage.dll</HintPath>
-    </Reference>
     <Reference Include="Zenject.ReflectionBaking.Mono.Cecil">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.dll</HintPath>
-    </Reference>
-    <Reference Include="Zenject.ReflectionBaking.Mono.Cecil.Mdb">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Assets/Plugins/Zenject/OptionalExtras/ReflectionBaking/Lib/Zenject.ReflectionBaking.Mono.Cecil.Mdb.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/PackageCache/com.unity.nuget.newtonsoft-json@4dfd81071c64/Runtime/Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="UnityEditor.iOS.Extensions.Xcode">
       <HintPath>/Applications/Unity/Hub/Editor/6000.3.2f1/PlaybackEngines/iOSSupport/UnityEditor.iOS.Extensions.Xcode.dll</HintPath>
@@ -916,11 +919,11 @@
     <Reference Include="Unity.AI.Navigation.Editor">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.AI.Navigation.Editor.dll</HintPath>
     </Reference>
-    <Reference Include="PPv2URPConverters">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/PPv2URPConverters.dll</HintPath>
-    </Reference>
     <Reference Include="Unity.RenderPipelines.Core.Runtime.Shared">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="PPv2URPConverters">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/PPv2URPConverters.dll</HintPath>
     </Reference>
     <Reference Include="Unity.RenderPipelines.Universal.2D.Runtime">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Runtime.dll</HintPath>
@@ -979,9 +982,6 @@
     <Reference Include="Unity.InputSystem.ForUI">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.InputSystem.ForUI.dll</HintPath>
     </Reference>
-    <Reference Include="Unity.RenderPipelines.GPUDriven.Runtime">
-      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.dll</HintPath>
-    </Reference>
     <Reference Include="MCPForUnity.Editor">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/MCPForUnity.Editor.dll</HintPath>
     </Reference>
@@ -990,6 +990,9 @@
     </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.VisualScripting.State.Editor.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.RenderPipelines.GPUDriven.Runtime">
+      <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.dll</HintPath>
     </Reference>
     <Reference Include="Unity.Mathematics">
       <HintPath>/Users/lucifer/Desktop/Ankur/IllusionGame/IllusionGame/Library/ScriptAssemblies/Unity.Mathematics.dll</HintPath>
