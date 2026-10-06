@@ -17,12 +17,26 @@ namespace EditorTools {
         private static void OnEditorUpdate() {
             string triggerFile = "Temp/BakeLevel1Trigger.txt";
             if (File.Exists(triggerFile)) {
+                // If Unity is compiling or importing assets, wait until compilation completes!
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating) {
+                    return;
+                }
+
                 try {
                     File.Delete(triggerFile);
                 } catch { }
 
                 Debug.Log("<color=cyan>[Level1EditorMenu]</color> Trigger detected in Editor update! Baking Level 1 now...");
                 BuildLevel1Scene();
+            }
+
+            string doorTrigger = "Temp/CaptureDoorOpenTrigger.txt";
+            if (File.Exists(doorTrigger)) {
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating) {
+                    return;
+                }
+                try { File.Delete(doorTrigger); } catch { }
+                TestDoorVisualizer.CaptureDoorOpenVisuals();
             }
         }
 
@@ -31,6 +45,9 @@ namespace EditorTools {
             string logPath = "/tmp/bake_debug.log";
             try {
                 File.WriteAllText(logPath, $"[Start] BuildLevel1Scene called at {DateTime.Now}\n");
+
+                AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+                File.AppendAllText(logPath, "AssetDatabase.Refresh completed\n");
 
                 var activeScene = EditorSceneManager.GetActiveScene();
                 File.AppendAllText(logPath, $"Active scene path: {activeScene.path}\n");
@@ -51,7 +68,7 @@ namespace EditorTools {
                 if (builder == null) {
                     builder = builderObj.AddComponent<Level1Builder>();
                 }
-                File.AppendAllText(logPath, $"builder component obtained\n");
+                File.AppendAllText(logPath, "builder component obtained\n");
 
                 builder.AutoAssignDungeonAssets();
                 File.AppendAllText(logPath, "AutoAssignDungeonAssets completed\n");
@@ -81,25 +98,52 @@ namespace EditorTools {
             var cam = Camera.main;
             if (cam == null) cam = UnityEngine.Object.FindAnyObjectByType<Camera>();
             if (cam != null) {
-                int width = 1280;
-                int height = 720;
-                var rt = new RenderTexture(width, height, 24);
-                var prevRt = cam.targetTexture;
-                cam.targetTexture = rt;
-                cam.Render();
-                RenderTexture.active = rt;
-                var tex = new Texture2D(width, height, TextureFormat.RGB24, false);
-                tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-                tex.Apply();
-                cam.targetTexture = prevRt;
-                RenderTexture.active = null;
-                UnityEngine.Object.DestroyImmediate(rt);
+                var camController = cam.GetComponent<CameraControl.IsometricCameraController>();
 
-                byte[] bytes = tex.EncodeToPNG();
-                UnityEngine.Object.DestroyImmediate(tex);
-                File.WriteAllBytes("screenshot_level1.png", bytes);
-                Debug.Log("<color=green>[Level1EditorMenu]</color> Screenshot captured to screenshot_level1.png");
+                // 1. Capture 9:16 Portrait Mode (720x1280)
+                RenderAndSaveScreenshot(cam, camController, 720, 1280, "screenshot_level1.png");
+
+                // 2. Capture 16:9 Landscape Mode (1920x1080)
+                RenderAndSaveScreenshot(cam, camController, 1920, 1080, "screenshot_landscape.png");
+
+                // 3. Capture 16:9 Rotated 135 deg View (matches user rotated view)
+                var field = typeof(CameraControl.IsometricCameraController).GetField("currentYaw", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null && camController != null) {
+                    field.SetValue(camController, 135f);
+                    camController.UpdateCameraTransform();
+                    RenderAndSaveScreenshot(cam, camController, 1920, 1080, "screenshot_rotated.png");
+                    field.SetValue(camController, 45f);
+                    camController.UpdateCameraTransform();
+                }
             }
+        }
+
+        private static void RenderAndSaveScreenshot(Camera cam, CameraControl.IsometricCameraController camController, int width, int height, string filePath) {
+            var rt = new RenderTexture(width, height, 24);
+            var prevRt = cam.targetTexture;
+            cam.targetTexture = rt;
+
+            if (camController != null) {
+                camController.UpdateCameraTransform();
+            }
+
+            cam.Render();
+            RenderTexture.active = rt;
+            var tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+            tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            tex.Apply();
+            cam.targetTexture = prevRt;
+            RenderTexture.active = null;
+            UnityEngine.Object.DestroyImmediate(rt);
+
+            if (camController != null) {
+                camController.UpdateCameraTransform();
+            }
+
+            byte[] bytes = tex.EncodeToPNG();
+            UnityEngine.Object.DestroyImmediate(tex);
+            File.WriteAllBytes(filePath, bytes);
+            Debug.Log($"<color=green>[Level1EditorMenu]</color> Screenshot ({width}x{height}) captured to {filePath}");
         }
     }
 }

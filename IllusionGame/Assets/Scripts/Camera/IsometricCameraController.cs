@@ -10,6 +10,7 @@ namespace CameraControl {
     /// - Mouse drag on PC (left-click drag or right-click drag)
     /// - Touch swipe / flick on Mobile
     /// - Keyboard rotation (Q/E or arrows)
+    /// - Dynamic portrait mode adaptation (scales orthographicSize to maintain framing across all aspect ratios)
     /// - Seamless snapping to nearest 90-degree isometric angles
     /// </summary>
     [RequireComponent(typeof(Camera))]
@@ -17,9 +18,15 @@ namespace CameraControl {
         [Header("Pivot & Framing")]
         [SerializeField] private Transform pivotTarget;
         [SerializeField] private Vector3 pivotOffset = new Vector3(0, 1.5f, 0);
-        [SerializeField] private float orthographicSize = 5.5f;
+        [SerializeField] private float orthographicSize = 9.5f;
         [SerializeField] private float pitchAngle = 30f;
         [SerializeField] private float distance = 25f;
+
+        [Header("Portrait / Aspect Ratio Adaptation")]
+        [SerializeField] private bool adaptToPortrait = true;
+        [Tooltip("Target horizontal width visible in world units to maintain in portrait mode")]
+        [SerializeField] private float targetVisibleWidth = 13.5f;
+        [SerializeField] private float minOrthoSize = 9.5f;
 
         [Header("Rotation Settings")]
         [Tooltip("Available snap angles in degrees yaw")]
@@ -245,7 +252,7 @@ namespace CameraControl {
             UpdateCameraTransform();
         }
 
-        private void UpdateCameraTransform() {
+        public void UpdateCameraTransform() {
             Vector3 center = (pivotTarget != null) ? pivotTarget.position + pivotOffset : pivotOffset;
 
             Quaternion rotation = Quaternion.Euler(pitchAngle, currentYaw, 0f);
@@ -253,10 +260,25 @@ namespace CameraControl {
             transform.position = center + direction * distance;
             transform.rotation = rotation;
 
+            if (cam == null) cam = GetComponent<Camera>();
             if (cam != null) {
                 cam.orthographic = true;
-                cam.orthographicSize = orthographicSize;
+                if (adaptToPortrait && cam.aspect > 0.01f) {
+                    // In orthographic projection: visibleWidth = 2 * orthoSize * aspect
+                    // Therefore: orthoSize = visibleWidth / (2 * aspect)
+                    float portraitOrtho = (targetVisibleWidth * 0.5f) / cam.aspect;
+                    cam.orthographicSize = Mathf.Max(minOrthoSize, portraitOrtho);
+                } else {
+                    cam.orthographicSize = orthographicSize;
+                }
             }
+        }
+
+        public void SetPortraitSettings(bool adapt, float visibleWidth, float minSize) {
+            adaptToPortrait = adapt;
+            targetVisibleWidth = visibleWidth;
+            minOrthoSize = minSize;
+            UpdateCameraTransform();
         }
 
         public void SetPivotTarget(Transform target, Vector3 offset) {

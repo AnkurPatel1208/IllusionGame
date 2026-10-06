@@ -25,6 +25,7 @@ namespace Grid {
         private readonly List<PerspectiveEdge> perspectiveEdges = new();
         private MaterialPropertyBlock propBlock;
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
         private bool isHovered;
 
         public bool IsWalkable => isWalkable;
@@ -36,6 +37,11 @@ namespace Grid {
             if (tileRenderer == null) {
                 tileRenderer = GetComponentInChildren<Renderer>();
             }
+            SetVisualColor(normalColor);
+        }
+
+        private void Start() {
+            SetVisualColor(normalColor);
         }
 
         public void SetWalkable(bool walkable) {
@@ -136,8 +142,10 @@ namespace Grid {
 
         private void SetVisualColor(Color color) {
             if (tileRenderer == null) return;
+            if (propBlock == null) propBlock = new MaterialPropertyBlock();
             tileRenderer.GetPropertyBlock(propBlock);
             propBlock.SetColor(BaseColorId, color);
+            propBlock.SetColor(ColorId, color);
             tileRenderer.SetPropertyBlock(propBlock);
         }
 

@@ -14,36 +14,47 @@ using UnityEditor;
 namespace Level {
     /// <summary>
     /// Constructs the elegant, serene "Level 1 – The Perspective Bridge" environment
-    /// inspired by the iconic aesthetic of Monument Valley:
-    /// - 100% pure Unity 3D primitive geometry (Cubes, Cylinders, Spheres, Quads)
+    /// with the iconic Monument Valley Garden diorama aesthetic:
+    /// - Original Level 1 puzzle geometry, pathfinding nodes, player Ida, and perspective bridge
+    /// - Dedicated exit platform terrace behind and left of the Gatehouse Room with complete level tile
+    /// - 100% solid, grounded structural connections (zero floating roof, pillar, or dome objects)
     /// - Pristine pastel color harmony (Terracotta-Peach monuments, Warm Ivory paths, Mint accents, Burnished Gold domes)
-    /// - Tranquil reflection pool with floating geometric lily pads and lotus buds
-    /// - Slender minaret towers with golden domes, needle spires, and impossible Escher stairways
-    /// - Princess Ida stylized player character (white gown, conical hat, golden brooch)
-    /// - Sacred geometric star artifact on Platform 2 and majestic arched exit portal on Platform 1
-    /// - Optical illusion perspective bridge (45° Yaw, 30° Pitch, depthOffset 4.0)
+    /// - Warm golden parchment sky (#F5E8A2) with gentle vignette framing
+    /// - Tiered circular diorama grass meadow base comfortably larger than the level foundations
+    /// - Clean and crisp: no small clutter or pegs on the floor
+    /// - Bright, warm, serene Monument Valley sunlight
     /// </summary>
     public class Level1Builder : MonoBehaviour {
         [Header("Monument Valley Palette")]
         [SerializeField] private Color monumentPeachColor = new Color(0.93f, 0.62f, 0.55f);
-        [SerializeField] private Color pathIvoryColor = new Color(0.97f, 0.95f, 0.91f);
+        [SerializeField] private Color pathIvoryColor = Color.white;
         [SerializeField] private Color trimMintColor = new Color(0.40f, 0.74f, 0.70f);
         [SerializeField] private Color accentGoldColor = new Color(0.96f, 0.78f, 0.32f);
         [SerializeField] private Color foundationSandColor = new Color(0.85f, 0.52f, 0.48f);
-        [SerializeField] private Color waterPoolColor = new Color(0.20f, 0.40f, 0.48f);
-        [SerializeField] private Color skyColor = new Color(0.24f, 0.42f, 0.50f);
+        [SerializeField] private Color grassLushColor = new Color(0.72f, 0.84f, 0.32f);
+        [SerializeField] private Color grassEdgeColor = new Color(0.80f, 0.88f, 0.40f);
+        [SerializeField] private Color skyColor = new Color(0.965f, 0.902f, 0.612f);
 
         [Header("Illusion Geometry Config")]
         [SerializeField] private float illusionYaw = 45f;
         [SerializeField] private float illusionPitch = 30f;
         [SerializeField] private float depthOffset = 4.0f;
 
-        [Header("Water Basin Height")]
+        [Header("Meadow Base Height")]
         [SerializeField] private float waterLevelY = -4.50f;
 
         [Header("Build Config")]
         [Tooltip("If false, the level is baked directly as scene objects in the editor")]
         [SerializeField] private bool buildOnStart = false;
+
+        public bool BuildOnStart {
+            get => buildOnStart;
+            set => buildOnStart = value;
+        }
+
+        public void AutoAssignDungeonAssets() {
+            pathIvoryColor = Color.white;
+        }
 
         // Procedural Monument Valley Materials
         private Material wallPeachMat;
@@ -51,8 +62,8 @@ namespace Level {
         private Material trimMintMat;
         private Material goldMat;
         private Material foundationSandMat;
-        private Material waterMat;
-        private Material waterPadMat;
+        private Material grassLushMat;
+        private Material grassEdgeMat;
         private Material doorIndigoMat;
         private Material doorSunlightMat;
         private Material idaDressMat;
@@ -60,32 +71,35 @@ namespace Level {
         private Material treeTrunkMat;
         private Material treeFoliageMat;
 
-        public bool BuildOnStart {
-            get => buildOnStart;
-            set => buildOnStart = value;
-        }
-
-        private void Start() {
-            if (buildOnStart) {
-                var existing = GameObject.Find("Level1_Environment");
-                if (existing == null) {
-                    BuildLevel();
-                }
-            }
-        }
-
 #if UNITY_EDITOR
-        [ContextMenu("Auto-Assign Assets")]
-        public void AutoAssignDungeonAssets() {
-            // Maintained for editor menu compatibility; all geometry is now 100% procedural Unity primitives!
-            EditorUtility.SetDirty(this);
+        [ContextMenu("Bake Level 1 To Scene")]
+        public void BakeLevelToScene() {
+            buildOnStart = false;
+            BuildLevel();
+            EditorUtility.SetDirty(gameObject);
+            UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+            Debug.Log("<color=green>[Level1Builder]</color> Level 1 baked into scene hierarchy!");
+        }
+
+        [ContextMenu("Clear Baked Level")]
+        public void ClearBakedLevel() {
+            GameObject existing = GameObject.Find("Level1_Environment");
+            if (existing != null) {
+                DestroyImmediate(existing);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(gameObject.scene);
+            }
         }
 #endif
 
-        [ContextMenu("Build Level 1")]
+        private void Start() {
+            if (buildOnStart) {
+                BuildLevel();
+            }
+        }
+
         public void BuildLevel() {
-            // Safely clear existing level root if present
-            var existing = GameObject.Find("Level1_Environment");
+            // Clean up old environment root if re-baking
+            GameObject existing = GameObject.Find("Level1_Environment");
             if (existing != null) {
                 if (Application.isPlaying) {
                     Destroy(existing);
@@ -104,13 +118,10 @@ namespace Level {
             Vector3 camForward = illusionRot * Vector3.forward;
             Vector3 illusionOffset = camForward * depthOffset;
 
-            // 2. Build Serene Reflection Pool Basin (Water plane, floating geometric lily pads)
-            BuildWaterBasin(rootT);
+            // 2. Build Clean Diorama Garden Meadow (Circular tiered lawn comfortably larger than level)
+            BuildGardenMeadow(rootT);
 
-            // 3. Build Surrounding Monument Valley Architecture (Minaret Spire Towers, Impossible Stairs, Geometric Trees)
-            BuildSurroundingMonuments(rootT);
-
-            // 4. Build Platform 1 (Starting Citadel & Grand Exit Portal)
+            // 3. Build Platform 1 (Starting Citadel, Gatehouse Room & Arched Exit Portal)
             GameObject p1Root = new GameObject("Platform_1_StartArea");
             p1Root.transform.SetParent(rootT, false);
 
@@ -131,19 +142,57 @@ namespace Level {
 
             ConnectGridNeighbors(p1Nodes);
 
+            // ========================================================
+            // EXIT PATH & PLATFORM TERRACE (Behind Door)
+            // ========================================================
+            // 1. Vestibule threshold tile inside the tower doorway (at x = -1, z = 2)
+            var vestibuleNode = CreateTile(p1Root.transform, new Vector3(-1f, 0f, 2f), "Tile_P1_Vestibule");
+
+            // 2. Side portal passage tile connecting tower interior to terrace (at x = -2, z = 2)
+            var terraceEntryNode = CreateTile(p1Root.transform, new Vector3(-2f, 0f, 2f), "Tile_P1_Terrace_Entry");
+
+            // 3. Dedicated Complete Level Tile on the terrace (at x = -3, z = 2)
+            var exitPlatformNode = CreateCompleteLevelTile(p1Root.transform, new Vector3(-3f, 0f, 2f), "Tile_P1_ExitPlatform");
+
+            // 4. North extension tiles of the 2x2 terrace platform (at z = 3)
+            var terraceN1 = CreateTile(p1Root.transform, new Vector3(-2f, 0f, 3f), "Tile_P1_Terrace_N1");
+            var terraceN2 = CreateTile(p1Root.transform, new Vector3(-3f, 0f, 3f), "Tile_P1_Terrace_N2");
+
+            // Connect exit path nodes explicitly (so courtyard (-2, 1) cannot bypass the door)
+            PathNode entranceNode = p1Nodes[new Vector2Int(-1, 1)]; // Front courtyard tile
+            entranceNode.AddNeighbor(vestibuleNode);
+            vestibuleNode.AddNeighbor(entranceNode);
+
+            vestibuleNode.AddNeighbor(terraceEntryNode);
+            terraceEntryNode.AddNeighbor(vestibuleNode);
+
+            terraceEntryNode.AddNeighbor(exitPlatformNode);
+            exitPlatformNode.AddNeighbor(terraceEntryNode);
+
+            terraceEntryNode.AddNeighbor(terraceN1);
+            terraceN1.AddNeighbor(terraceEntryNode);
+
+            exitPlatformNode.AddNeighbor(terraceN2);
+            terraceN2.AddNeighbor(exitPlatformNode);
+
+            terraceN1.AddNeighbor(terraceN2);
+            terraceN2.AddNeighbor(terraceN1);
+
+            List<PathNode> lockedExitNodes = new List<PathNode> { vestibuleNode, terraceEntryNode, terraceN1, terraceN2 };
+
             // Cantilever geometric brackets under Bridge Arm 1
             BuildCantileverBracketsP1(p1Root.transform);
 
             // Stepped descending staircase on left flank
             BuildPlatform1Staircase(p1Root.transform);
 
-            // Monolithic tiered foundation citadel under Platform 1
+            // Monolithic tiered foundation citadel under Platform 1 and Exit Terrace
             BuildPlatform1Foundation(p1Root.transform);
 
-            // Platform 1 Architecture: Grand Arched Gateway Portal, Minarets, Planters
-            BuildPlatform1Architecture(p1Root.transform, p1Nodes[new Vector2Int(-1, 1)]);
+            // Platform 1 Architecture: Gatehouse Tower Room, Arched Portal, Exit Terrace Platform, Finials
+            BuildPlatform1Architecture(p1Root.transform, exitPlatformNode, entranceNode, lockedExitNodes);
 
-            // 5. Build Platform 2 (Right Sacred Key Sanctuary)
+            // 4. Build Platform 2 (Right Sacred Key Sanctuary)
             GameObject p2Root = new GameObject("Platform_2_KeyArea");
             p2Root.transform.SetParent(rootT, false);
 
@@ -177,24 +226,24 @@ namespace Level {
             // Platform 2 Architecture: Domed Sanctuary Pavilion, Stepped Terrace
             BuildPlatform2Architecture(p2Root.transform, illusionOffset);
 
-            // 6. Perspective Bridge Edge (connecting b1_Tip and b2_Start)
+            // 5. Perspective Bridge Edge (connecting b1_Tip and b2_Start)
             GameObject edgeObj = new GameObject("PerspectiveBridge_Edge");
             edgeObj.transform.SetParent(rootT, false);
             var persEdge = edgeObj.AddComponent<PerspectiveEdge>();
             persEdge.Initialize(b1_Tip, b2_Start, illusionYaw, 3.5f);
 
-            // 7. Sacred Geometric Key Item on Platform 2
+            // 6. Sacred Geometric Key Item on Platform 2 (Floating cleanly above tile without bulky pedestal)
             PathNode keyNode = p2Nodes[new Vector2Int(6, 1)];
             CreateKeyItemAndAltar(p2Root.transform, keyNode);
 
-            // 8. Player Character (Princess Ida Silhouette)
+            // 7. Player Character (Princess Ida Silhouette)
             PathNode startNode = p1Nodes[new Vector2Int(-1, 0)];
             CreatePlayerCharacter(rootT, startNode);
 
-            // 9. Setup Camera, Monument Valley Lighting, and UI Managers
+            // 8. Setup Camera, Monument Valley Lighting, and UI Managers
             SetupCameraAndLighting(rootT, illusionOffset);
 
-            Debug.Log("<color=green>[Level1Builder]</color> Monument Valley environment successfully built purely with Unity 3D primitives!");
+            Debug.Log("<color=green>[Level1Builder]</color> Level 1 successfully built with exit platform terrace and clean key artifact!");
         }
 
         private void CreateMaterials() {
@@ -203,17 +252,20 @@ namespace Level {
 
             Material MakeMat(Color c, float smoothness = 0.15f, float metallic = 0f, string name = "Mat") {
                 var m = new Material(litShader) { color = c, name = name };
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", c);
                 m.SetFloat("_Smoothness", smoothness);
                 m.SetFloat("_Metallic", metallic);
                 return m;
             }
 
             wallPeachMat = MakeMat(monumentPeachColor, 0.18f, 0f, "M_MV_PeachWall");
-            pathIvoryMat = MakeMat(pathIvoryColor, 0.12f, 0f, "M_MV_IvoryPath");
+            pathIvoryColor = Color.white;
+            pathIvoryMat = MakeMat(Color.white, 0.12f, 0f, "M_MV_IvoryPath");
             trimMintMat = MakeMat(trimMintColor, 0.20f, 0f, "M_MV_MintTrim");
             foundationSandMat = MakeMat(foundationSandColor, 0.15f, 0f, "M_MV_SandFoundation");
-            waterMat = MakeMat(waterPoolColor, 0.82f, 0.10f, "M_MV_TranquilWater");
-            waterPadMat = MakeMat(new Color(0.32f, 0.65f, 0.60f), 0.25f, 0f, "M_MV_WaterPad");
+            grassLushMat = MakeMat(grassLushColor, 0.08f, 0f, "M_MV_GrassLush");
+            grassEdgeMat = MakeMat(grassEdgeColor, 0.08f, 0f, "M_MV_GrassEdge");
 
             goldMat = MakeMat(accentGoldColor, 0.65f, 0.50f, "M_MV_BurnishedGold");
             goldMat.EnableKeyword("_EMISSION");
@@ -232,70 +284,20 @@ namespace Level {
             treeFoliageMat = MakeMat(new Color(0.48f, 0.76f, 0.66f), 0.15f, 0f, "M_MV_TreeFoliage");
         }
 
-        private void BuildWaterBasin(Transform parent) {
-            GameObject waterRoot = new GameObject("Monument_Water_Basin");
-            waterRoot.transform.SetParent(parent, false);
+        private void BuildGardenMeadow(Transform parent) {
+            GameObject meadowRoot = new GameObject("Monument_Garden_Meadow");
+            meadowRoot.transform.SetParent(parent, false);
 
-            float waterY = waterLevelY;
+            Vector3 center = new Vector3(3.10f, waterLevelY, 2.00f);
 
-            // Expansive serene water reflection plane (60 x 60 units)
-            CreateBlock(waterRoot.transform, new Vector3(2.5f, waterY - 0.20f, 2.5f), new Vector3(60f, 0.40f, 60f), waterMat, "Water_Surface");
+            // Tier 1 - Wide base skirt (subtle gentle rim)
+            CreateCylinder(meadowRoot.transform, center + new Vector3(0, -0.15f, 0), new Vector3(26.0f, 0.25f, 22.0f), grassEdgeMat, "Meadow_Base_Skirt");
 
-            // Submerged stepped perimeter frame
-            CreateBlock(waterRoot.transform, new Vector3(2.5f, waterY - 0.50f, -14.0f), new Vector3(44f, 0.60f, 2.0f), trimMintMat, "Water_Frame_South");
-            CreateBlock(waterRoot.transform, new Vector3(2.5f, waterY - 0.50f, 20.0f), new Vector3(44f, 0.60f, 2.0f), trimMintMat, "Water_Frame_North");
-            CreateBlock(waterRoot.transform, new Vector3(-18.0f, waterY - 0.50f, 3.0f), new Vector3(2.0f, 0.60f, 36f), trimMintMat, "Water_Frame_West");
-            CreateBlock(waterRoot.transform, new Vector3(22.0f, waterY - 0.50f, 3.0f), new Vector3(2.0f, 0.60f, 36f), trimMintMat, "Water_Frame_East");
+            // Tier 2 - Main manicured circular/oval lawn
+            CreateCylinder(meadowRoot.transform, center + new Vector3(0, 0.05f, 0), new Vector3(22.5f, 0.35f, 18.5f), grassLushMat, "Meadow_Main_Lawn");
 
-            // Floating geometric lily pads with lotus buds around the citadel islands
-            Vector3[] padPositions = new Vector3[] {
-                new Vector3(-3.5f, waterY + 0.02f, -1.8f),
-                new Vector3(1.2f, waterY + 0.02f, -2.4f),
-                new Vector3(6.8f, waterY + 0.02f, -1.5f),
-                new Vector3(9.5f, waterY + 0.02f, 2.2f),
-                new Vector3(-4.8f, waterY + 0.02f, 3.2f),
-                new Vector3(2.5f, waterY + 0.02f, 6.5f),
-                new Vector3(7.8f, waterY + 0.02f, 6.2f),
-                new Vector3(-1.2f, waterY + 0.02f, 8.5f),
-            };
-
-            for (int i = 0; i < padPositions.Length; i++) {
-                float rad = 0.55f + ((i % 3) * 0.15f);
-                CreateFloatingLilyPad(waterRoot.transform, padPositions[i], rad, $"LilyPad_{i}");
-            }
-        }
-
-        private void BuildSurroundingMonuments(Transform parent) {
-            GameObject surroundRoot = new GameObject("Surrounding_Monuments");
-            surroundRoot.transform.SetParent(parent, false);
-
-            float waterY = waterLevelY;
-
-            // Distant Monument Valley Minaret Spire Towers rising serenely from the water
-            CreateMinaretTower(surroundRoot.transform, new Vector3(-7.5f, waterY, 11.5f), 13.5f, 0.85f, wallPeachMat, goldMat, trimMintMat, "Minaret_Tower_L");
-            CreateMinaretTower(surroundRoot.transform, new Vector3(-2.2f, waterY, 14.5f), 16.0f, 1.0f, wallPeachMat, goldMat, trimMintMat, "Minaret_Tower_CenterL");
-            CreateMinaretTower(surroundRoot.transform, new Vector3(6.5f, waterY, 15.0f), 15.5f, 1.0f, wallPeachMat, goldMat, trimMintMat, "Minaret_Tower_CenterR");
-            CreateMinaretTower(surroundRoot.transform, new Vector3(12.5f, waterY, 11.0f), 13.0f, 0.85f, wallPeachMat, goldMat, trimMintMat, "Minaret_Tower_R");
-
-            // Flanking viewing pavilions in the distance
-            CreateMinaretTower(surroundRoot.transform, new Vector3(-12.0f, waterY, 3.5f), 10.5f, 0.75f, foundationSandMat, goldMat, trimMintMat, "Minaret_Flank_L");
-            CreateMinaretTower(surroundRoot.transform, new Vector3(16.5f, waterY, 4.0f), 10.5f, 0.75f, foundationSandMat, goldMat, trimMintMat, "Minaret_Flank_R");
-
-            // Impossible Escher-esque Geometric Stairways mounted on the towers
-            CreateImpossibleStairs(surroundRoot.transform, new Vector3(-6.2f, waterY + 4.5f, 11.0f), new Vector3(0.35f, 0.35f, 0), 7, new Vector3(0.40f, 0.15f, 0.90f), pathIvoryMat, "Escher_Stairs_L");
-            CreateImpossibleStairs(surroundRoot.transform, new Vector3(5.2f, waterY + 5.0f, 14.0f), new Vector3(-0.35f, 0.35f, 0), 8, new Vector3(0.40f, 0.15f, 0.90f), pathIvoryMat, "Escher_Stairs_R");
-
-            // Stylized Minimalist Geometric Trees
-            CreateGeometricTree(surroundRoot.transform, new Vector3(-5.2f, waterY, 2.5f), 1.1f, "MV_Tree_L1");
-            CreateGeometricTree(surroundRoot.transform, new Vector3(-8.5f, waterY, 6.0f), 1.3f, "MV_Tree_L2");
-            CreateGeometricTree(surroundRoot.transform, new Vector3(10.5f, waterY, 3.2f), 1.2f, "MV_Tree_R1");
-            CreateGeometricTree(surroundRoot.transform, new Vector3(14.0f, waterY, 7.5f), 1.3f, "MV_Tree_R2");
-            CreateGeometricTree(surroundRoot.transform, new Vector3(0.5f, waterY, 13.0f), 1.4f, "MV_Tree_Back");
-
-            // Floating dreamlike geometric accent cubes tilted at 45°
-            CreateFloatingCube(surroundRoot.transform, new Vector3(-4.5f, 3.8f, 7.5f), 0.70f, trimMintMat, "Floating_Cube_1");
-            CreateFloatingCube(surroundRoot.transform, new Vector3(9.2f, 4.2f, 8.5f), 0.80f, wallPeachMat, "Floating_Cube_2");
-            CreateFloatingCube(surroundRoot.transform, new Vector3(2.5f, 5.2f, 11.5f), 0.65f, goldMat, "Floating_Cube_3");
+            // Tier 3 - Central gentle elevation mound directly under foundations
+            CreateCylinder(meadowRoot.transform, center + new Vector3(0, 0.22f, 0), new Vector3(18.5f, 0.22f, 15.0f), grassLushMat, "Meadow_Center_Elevation");
         }
 
         private void BuildCantileverBracketsP1(Transform parent) {
@@ -333,11 +335,11 @@ namespace Level {
             CreateBlock(stairsRoot.transform, new Vector3(-3.05f, -0.30f, 0.0f), new Vector3(0.40f, 0.15f, 0.96f), pathIvoryMat, "Stair_Step_2");
             CreateBlock(stairsRoot.transform, new Vector3(-3.45f, -0.45f, 0.0f), new Vector3(0.40f, 0.15f, 0.96f), pathIvoryMat, "Stair_Step_3");
 
-            // Viewing balcony platform at stair base
+            // Viewing balcony platform at stair base (top surface at Y = -0.95 + 0.425 = -0.525f)
             CreateBlock(stairsRoot.transform, new Vector3(-3.25f, -0.95f, 0.0f), new Vector3(1.45f, 0.85f, 1.15f), wallPeachMat, "Stairs_Plinth");
 
-            // Decorative corner pillar with golden finial
-            CreateCylinder(stairsRoot.transform, new Vector3(-3.90f, -0.05f, 0.0f), new Vector3(0.25f, 0.95f, 0.25f), trimMintMat, "Stair_Finial_Pillar");
+            // Decorative corner pillar resting flush on plinth (from Y = -0.525f to +0.35f, height = 0.875f)
+            CreateCylinder(stairsRoot.transform, new Vector3(-3.90f, -0.0875f, 0.0f), new Vector3(0.24f, 0.875f, 0.24f), trimMintMat, "Stair_Finial_Pillar");
             CreateSphere(stairsRoot.transform, new Vector3(-3.90f, 0.48f, 0.0f), new Vector3(0.32f, 0.32f, 0.32f), goldMat, "Stair_Finial_Ball");
         }
 
@@ -346,23 +348,39 @@ namespace Level {
             fRoot.transform.SetParent(parent, false);
 
             float waterY = waterLevelY;
+            Vector3 fCenter = new Vector3(-1.0f, 0, 1.50f);
 
-            // Tier 1: Just below the courtyard slabs (Y: 0.0 to -1.30)
-            CreateBlock(fRoot.transform, new Vector3(-1.0f, -0.65f, 0.65f), new Vector3(3.20f, 1.30f, 2.30f), wallPeachMat, "Foundation_Tier_1");
+            // Tier 1: Just below the courtyard slabs (Y: 0.0 to -1.30, supports courtyard and tower)
+            CreateBlock(fRoot.transform, new Vector3(fCenter.x, -0.65f, fCenter.z), new Vector3(3.20f, 1.30f, 4.00f), wallPeachMat, "Foundation_Tier_1");
 
-            // Mint trim belt
-            CreateBlock(fRoot.transform, new Vector3(-1.0f, -1.35f, 0.65f), new Vector3(3.35f, 0.14f, 2.45f), trimMintMat, "Foundation_Belt_1");
+            // Dedicated foundation corner buttresses directly supporting the front facade pilasters
+            CreateBlock(fRoot.transform, new Vector3(-2.55f, -0.65f, 1.35f), new Vector3(0.48f, 1.30f, 0.48f), wallPeachMat, "Foundation_P1_Buttress_L");
+            CreateBlock(fRoot.transform, new Vector3(0.55f, -0.65f, 1.35f), new Vector3(0.48f, 1.30f, 0.48f), wallPeachMat, "Foundation_P1_Buttress_R");
+
+            // Mint trim belt 1
+            CreateBlock(fRoot.transform, new Vector3(fCenter.x, -1.35f, fCenter.z), new Vector3(3.35f, 0.14f, 4.15f), trimMintMat, "Foundation_Belt_1");
 
             // Tier 2: Middle shaft (Y: -1.40 to -3.00)
-            CreateBlock(fRoot.transform, new Vector3(-1.0f, -2.20f, 0.65f), new Vector3(3.45f, 1.60f, 2.50f), foundationSandMat, "Foundation_Tier_2");
+            CreateBlock(fRoot.transform, new Vector3(fCenter.x, -2.20f, fCenter.z), new Vector3(3.45f, 1.60f, 4.25f), foundationSandMat, "Foundation_Tier_2");
 
             // Mint trim belt 2
-            CreateBlock(fRoot.transform, new Vector3(-1.0f, -3.05f, 0.65f), new Vector3(3.60f, 0.14f, 2.65f), trimMintMat, "Foundation_Belt_2");
+            CreateBlock(fRoot.transform, new Vector3(fCenter.x, -3.05f, fCenter.z), new Vector3(3.60f, 0.14f, 4.40f), trimMintMat, "Foundation_Belt_2");
 
-            // Tier 3: Submerged bedrock plinth anchored into water (Y: -3.10 to waterY - 0.40f)
+            // Tier 3: Submerged bedrock plinth anchored into meadow (Y: -3.10 to waterY - 0.40f)
             float tier3Height = (-3.10f) - (waterY - 0.40f);
             float tier3CenterY = -3.10f - (tier3Height * 0.5f);
-            CreateBlock(fRoot.transform, new Vector3(-1.0f, tier3CenterY, 0.65f), new Vector3(3.85f, tier3Height, 2.90f), wallPeachMat, "Foundation_Plinth_Water");
+            CreateBlock(fRoot.transform, new Vector3(fCenter.x, tier3CenterY, fCenter.z), new Vector3(3.85f, tier3Height, 4.60f), wallPeachMat, "Foundation_Plinth_Meadow");
+
+            // ========================================================
+            // Dedicated Foundation Citadel Bastion under Exit Terrace Platform
+            // (Seamlessly joins main citadel foundation, descending into lawn)
+            // ========================================================
+            Vector3 terraceCenter = new Vector3(-2.60f, 0, 2.50f);
+            CreateBlock(fRoot.transform, new Vector3(terraceCenter.x, -0.65f, terraceCenter.z), new Vector3(2.10f, 1.30f, 2.30f), wallPeachMat, "Foundation_Terrace_Tier_1");
+            CreateBlock(fRoot.transform, new Vector3(terraceCenter.x, -1.35f, terraceCenter.z), new Vector3(2.25f, 0.14f, 2.45f), trimMintMat, "Foundation_Terrace_Belt_1");
+            CreateBlock(fRoot.transform, new Vector3(terraceCenter.x, -2.20f, terraceCenter.z), new Vector3(2.35f, 1.60f, 2.55f), foundationSandMat, "Foundation_Terrace_Tier_2");
+            CreateBlock(fRoot.transform, new Vector3(terraceCenter.x, -3.05f, terraceCenter.z), new Vector3(2.45f, 0.14f, 2.65f), trimMintMat, "Foundation_Terrace_Belt_2");
+            CreateBlock(fRoot.transform, new Vector3(terraceCenter.x, tier3CenterY, terraceCenter.z), new Vector3(2.65f, tier3Height, 2.85f), wallPeachMat, "Foundation_Terrace_Plinth_Meadow");
         }
 
         private void BuildPlatform2Foundation(Transform parent, Vector3 offset) {
@@ -372,15 +390,22 @@ namespace Level {
             float waterY = waterLevelY;
 
             // 1. Foundation under Playable Courtyard (Z = 0.5f)
-            // Local Y: 0.0 to -1.40 (World Y: -2.00 to -3.40)
             CreateBlock(fRoot.transform, new Vector3(6.0f, -0.70f, 0.5f) + offset, new Vector3(3.10f, 1.40f, 2.10f), wallPeachMat, "Foundation_P2_Tier_1");
             CreateBlock(fRoot.transform, new Vector3(6.0f, -1.45f, 0.5f) + offset, new Vector3(3.25f, 0.14f, 2.25f), trimMintMat, "Foundation_P2_Belt_1");
 
-            // Tier 2 entering water (World Y: -3.50 to waterY - 0.40f)
+            // Dedicated foundation bastion piers supporting the two corner obelisks solidly from below
+            Vector3 obeliskL_Pos = new Vector3(4.60f, 0f, 1.25f) + offset;
+            Vector3 obeliskR_Pos = new Vector3(7.40f, 0f, -0.25f) + offset;
+            CreateBlock(fRoot.transform, new Vector3(obeliskL_Pos.x, -0.70f, obeliskL_Pos.z), new Vector3(0.50f, 1.40f, 0.50f), wallPeachMat, "Foundation_P2_ObeliskPier_L");
+            CreateBlock(fRoot.transform, new Vector3(obeliskL_Pos.x, -1.45f, obeliskL_Pos.z), new Vector3(0.54f, 0.14f, 0.54f), trimMintMat, "Foundation_P2_ObeliskBelt_L");
+            CreateBlock(fRoot.transform, new Vector3(obeliskR_Pos.x, -0.70f, obeliskR_Pos.z), new Vector3(0.50f, 1.40f, 0.50f), wallPeachMat, "Foundation_P2_ObeliskPier_R");
+            CreateBlock(fRoot.transform, new Vector3(obeliskR_Pos.x, -1.45f, obeliskR_Pos.z), new Vector3(0.54f, 0.14f, 0.54f), trimMintMat, "Foundation_P2_ObeliskBelt_R");
+
+            // Tier 2 entering meadow
             float worldBaseY = -2.00f;
             float p2Tier2Height = (worldBaseY - 1.50f) - (waterY - 0.40f);
             float p2Tier2CenterY = -1.50f - (p2Tier2Height * 0.5f);
-            CreateBlock(fRoot.transform, new Vector3(6.0f, p2Tier2CenterY, 0.5f) + offset, new Vector3(3.45f, p2Tier2Height, 2.45f), foundationSandMat, "Foundation_P2_Plinth_Water");
+            CreateBlock(fRoot.transform, new Vector3(6.0f, p2Tier2CenterY, 0.5f) + offset, new Vector3(3.45f, p2Tier2Height, 2.45f), foundationSandMat, "Foundation_P2_Plinth_Meadow");
 
             // 2. Colossal Stone Bastion under Elevated Sanctuary Terrace (Z = 2.65f)
             float terraceWorldY = 0.50f + offset.y; // -1.50f
@@ -390,40 +415,154 @@ namespace Level {
             CreateBlock(fRoot.transform, bastionPos, new Vector3(4.10f, bastionHeight, 1.90f), wallPeachMat, "Foundation_P2_Terrace_Bastion");
         }
 
-        private void BuildPlatform1Architecture(Transform parent, PathNode exitNode) {
+        private void BuildPlatform1Architecture(Transform parent, PathNode exitNode, PathNode entranceNode, List<PathNode> additionalLockedNodes) {
             GameObject archRoot = new GameObject("Architecture_P1");
             archRoot.transform.SetParent(parent, false);
 
-            // Grand Monument Valley Arched Gateway Portal
+            // ==========================================
+            // 1. GATEHOUSE TOWER ROOM BEHIND THE DOOR
+            // ==========================================
+            GameObject roomRoot = new GameObject("Gatehouse_Room_P1");
+            roomRoot.transform.SetParent(archRoot.transform, false);
+
+            Vector3 roomCenter = new Vector3(-1.0f, 0f, 2.30f);
+            float roomW = 3.10f;
+            float roomD = 1.90f;
+            float roomH = 3.00f;
+            float wallThick = 0.32f;
+
+            // Room Floor Paving (inside room under vestibule tile)
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, -0.04f, roomCenter.z), new Vector3(roomW - 0.2f, 0.08f, roomD - 0.2f), wallPeachMat, "Room_Floor_Base");
+
+            // Back Wall (at Z = 2.30 + 0.95 - 0.16 = 3.09f)
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, roomH * 0.5f, roomCenter.z + (roomD * 0.5f) - (wallThick * 0.5f)), new Vector3(roomW, roomH, wallThick), wallPeachMat, "Room_BackWall");
+
+            // Right Wall (at X = -1.0 + 1.55 - 0.16 = 0.39f)
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x + (roomW * 0.5f) - (wallThick * 0.5f), roomH * 0.5f, roomCenter.z), new Vector3(wallThick, roomH, roomD), wallPeachMat, "Room_RightWall");
+
+            // Left Wall with Arched Portal Opening leading onto the Exit Terrace (at X = -2.39f)
+            float leftWallX = roomCenter.x - (roomW * 0.5f) + (wallThick * 0.5f);
+            float lintelH = roomH - 1.85f;
+            // Front pier of left wall (from Z = 1.35 to 1.55)
+            CreateBlock(roomRoot.transform, new Vector3(leftWallX, roomH * 0.5f, 1.45f), new Vector3(wallThick, roomH, 0.20f), wallPeachMat, "Room_LeftWall_Pier_Front");
+            // Back pier of left wall (from Z = 2.45 to 3.25)
+            CreateBlock(roomRoot.transform, new Vector3(leftWallX, roomH * 0.5f, 2.85f), new Vector3(wallThick, roomH, 0.80f), wallPeachMat, "Room_LeftWall_Pier_Back");
+            // Lintel over the side arched opening (spanning Z = 1.55 to 2.45)
+            CreateBlock(roomRoot.transform, new Vector3(leftWallX, 1.85f + (lintelH * 0.5f), 2.00f), new Vector3(wallThick, lintelH, 0.90f), wallPeachMat, "Room_LeftWall_Lintel");
+
+            // Front Wall Facade with Arched Doorway Opening (at Z = 1.36f)
+            float frontZ = roomCenter.z - (roomD * 0.5f) + (wallThick * 0.5f);
+            float pierW = ((roomW - wallThick * 2f) - 1.00f) * 0.5f;
+            float pierLeftX = roomCenter.x - 0.50f - (pierW * 0.5f);
+            float pierRightX = roomCenter.x + 0.50f + (pierW * 0.5f);
+            CreateBlock(roomRoot.transform, new Vector3(pierLeftX, roomH * 0.5f, frontZ), new Vector3(pierW, roomH, wallThick), wallPeachMat, "Room_FrontWall_L");
+            CreateBlock(roomRoot.transform, new Vector3(pierRightX, roomH * 0.5f, frontZ), new Vector3(pierW, roomH, wallThick), wallPeachMat, "Room_FrontWall_R");
+
+            // Front Lintel above doorway (from Y = 1.85f to Y = 3.00f)
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, 1.85f + (lintelH * 0.5f), frontZ), new Vector3(1.10f, lintelH, wallThick), wallPeachMat, "Room_Lintel");
+
+            // Interior Warm Sanctuary Glow Light pouring through doorway and side arch
+            GameObject roomLightObj = new GameObject("Room_Interior_Light");
+            roomLightObj.transform.SetParent(roomRoot.transform, false);
+            roomLightObj.transform.position = new Vector3(roomCenter.x, 1.30f, roomCenter.z);
+            var rLight = roomLightObj.AddComponent<Light>();
+            rLight.type = LightType.Point;
+            rLight.color = new Color(1.0f, 0.94f, 0.78f);
+            rLight.intensity = 2.8f;
+            rLight.range = 5.0f;
+            rLight.shadows = LightShadows.None;
+
+            // Room Ceiling & Cornice Trim (solidly connects to walls, no gap!)
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, roomH + 0.08f, roomCenter.z), new Vector3(roomW + 0.15f, 0.16f, roomD + 0.15f), pathIvoryMat, "Room_Roof_Slab");
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, roomH + 0.22f, roomCenter.z), new Vector3(roomW + 0.30f, 0.12f, roomD + 0.30f), trimMintMat, "Room_Cornice");
+
+            // Grand Golden Pavilion Dome on Room Roof (grounded on roof cornice)
+            float roofDomeBaseY = roomH + 0.28f;
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, roofDomeBaseY + 0.10f, roomCenter.z), new Vector3(1.70f, 0.20f, 1.50f), wallPeachMat, "Roof_Dome_Plinth");
+            CreateBlock(roomRoot.transform, new Vector3(roomCenter.x, roofDomeBaseY + 0.24f, roomCenter.z), new Vector3(1.80f, 0.08f, 1.60f), trimMintMat, "Roof_Dome_Rim");
+            CreateSphere(roomRoot.transform, new Vector3(roomCenter.x, roofDomeBaseY + 0.75f, roomCenter.z), new Vector3(1.50f, 0.95f, 1.30f), goldMat, "Roof_Golden_Dome");
+            CreateCylinder(roomRoot.transform, new Vector3(roomCenter.x, roofDomeBaseY + 1.50f, roomCenter.z), new Vector3(0.10f, 0.60f, 0.10f), goldMat, "Roof_Dome_Spire");
+            CreateSphere(roomRoot.transform, new Vector3(roomCenter.x, roofDomeBaseY + 1.85f, roomCenter.z), new Vector3(0.20f, 0.20f, 0.20f), goldMat, "Roof_Dome_Finial");
+
+            // ==========================================
+            // 1B. EXIT TERRACE PLATFORM (Where drawn by user)
+            // ==========================================
+            GameObject terraceRoot = new GameObject("Exit_Terrace_P1");
+            terraceRoot.transform.SetParent(archRoot.transform, false);
+
+            // Floor base slab supporting the terrace tiles
+            CreateBlock(terraceRoot.transform, new Vector3(-2.60f, -0.05f, 2.50f), new Vector3(2.10f, 0.10f, 2.20f), wallPeachMat, "Terrace_Base_Slab");
+
+            // Perimeter mint balustrade rims on outer edges
+            CreateBlock(terraceRoot.transform, new Vector3(-3.55f, 0.08f, 2.50f), new Vector3(0.12f, 0.16f, 2.10f), trimMintMat, "Terrace_Parapet_West");
+            CreateBlock(terraceRoot.transform, new Vector3(-2.60f, 0.08f, 3.55f), new Vector3(2.00f, 0.16f, 0.12f), trimMintMat, "Terrace_Parapet_North");
+
+            // Decorative Corner Finials on outer terrace corners
+            CreateBlock(terraceRoot.transform, new Vector3(-3.55f, 0.15f, 1.45f), new Vector3(0.24f, 0.30f, 0.24f), trimMintMat, "Terrace_Post_SW");
+            CreateSphere(terraceRoot.transform, new Vector3(-3.55f, 0.38f, 1.45f), new Vector3(0.16f, 0.16f, 0.16f), goldMat, "Terrace_Post_SW_Ball");
+
+            CreateBlock(terraceRoot.transform, new Vector3(-3.55f, 0.15f, 3.55f), new Vector3(0.24f, 0.30f, 0.24f), trimMintMat, "Terrace_Post_NW");
+            CreateSphere(terraceRoot.transform, new Vector3(-3.55f, 0.38f, 3.55f), new Vector3(0.16f, 0.16f, 0.16f), goldMat, "Terrace_Post_NW_Ball");
+
+            CreateBlock(terraceRoot.transform, new Vector3(-1.60f, 0.15f, 3.55f), new Vector3(0.24f, 0.30f, 0.24f), trimMintMat, "Terrace_Post_NE");
+            CreateSphere(terraceRoot.transform, new Vector3(-1.60f, 0.38f, 3.55f), new Vector3(0.16f, 0.16f, 0.16f), goldMat, "Terrace_Post_NE_Ball");
+
+            // ==========================================
+            // 2. CORNER PILASTER COLUMNS & ROOF FINIALS
+            // ==========================================
+            float cornerX_L = roomCenter.x - (roomW * 0.5f); // -2.55f (exact wall outer edge)
+            float cornerX_R = roomCenter.x + (roomW * 0.5f); // +0.55f (exact wall outer edge)
+            float cornerZ_F = roomCenter.z - (roomD * 0.5f); // +1.35f (exact front outer edge)
+            float cornerZ_B = roomCenter.z + (roomD * 0.5f); // +3.25f (exact back outer edge)
+
+            Vector3[] cornerPositions = new Vector3[] {
+                new Vector3(cornerX_L, 0f, cornerZ_F),
+                new Vector3(cornerX_R, 0f, cornerZ_F),
+                new Vector3(cornerX_L, 0f, cornerZ_B),
+                new Vector3(cornerX_R, 0f, cornerZ_B)
+            };
+            string[] cornerNames = new string[] { "Corner_FrontL", "Corner_FrontR", "Corner_BackL", "Corner_BackR" };
+
+            float roofCorniceTopY = roomH + 0.28f; // 3.28f (top of Room_Cornice)
+
+            // Grounded Front Facade Pilasters (only on the two front corners facing courtyard)
+            CreateCornerPilaster(archRoot.transform, cornerPositions[0], roomH, 0.20f, wallPeachMat, trimMintMat, cornerNames[0] + "_Pilaster");
+            CreateCornerPilaster(archRoot.transform, cornerPositions[1], roomH, 0.20f, wallPeachMat, trimMintMat, cornerNames[1] + "_Pilaster");
+
+            // Symmetrical Golden Corner Finials atop Roof Cornice (all 4 corners at Y = 3.28f)
+            for (int i = 0; i < cornerPositions.Length; i++) {
+                CreateRoofCornerFinial(archRoot.transform, new Vector3(cornerPositions[i].x, roofCorniceTopY, cornerPositions[i].z), 0.18f, goldMat, trimMintMat, cornerNames[i] + "_Finial");
+            }
+
+            // ==========================================
+            // 3. FRONT ARCHED DOORWAY FRAME & COLUMNS
+            // ==========================================
             Vector3 portalPos = new Vector3(-1.0f, 0.0f, 1.45f);
 
-            // Left and Right slender portal minaret columns
-            CreateCylinder(archRoot.transform, portalPos + new Vector3(-0.55f, 1.10f, 0), new Vector3(0.26f, 1.10f, 0.26f), pathIvoryMat, "Portal_Col_L");
-            CreateSphere(archRoot.transform, portalPos + new Vector3(-0.55f, 2.25f, 0), new Vector3(0.34f, 0.34f, 0.34f), goldMat, "Portal_Col_Cap_L");
+            // Column Plinth Bases (Grounded Mint)
+            CreateBlock(archRoot.transform, portalPos + new Vector3(-0.50f, 0.075f, -0.05f), new Vector3(0.26f, 0.15f, 0.26f), trimMintMat, "Portal_Col_Base_L");
+            CreateBlock(archRoot.transform, portalPos + new Vector3(0.50f, 0.075f, -0.05f), new Vector3(0.26f, 0.15f, 0.26f), trimMintMat, "Portal_Col_Base_R");
 
-            CreateCylinder(archRoot.transform, portalPos + new Vector3(0.55f, 1.10f, 0), new Vector3(0.26f, 1.10f, 0.26f), pathIvoryMat, "Portal_Col_R");
-            CreateSphere(archRoot.transform, portalPos + new Vector3(0.55f, 2.25f, 0), new Vector3(0.34f, 0.34f, 0.34f), goldMat, "Portal_Col_Cap_R");
+            // Columns (Warm Ivory) grounded from Y = 0.15f to 2.05f (height = 1.90f)
+            CreateCylinder(archRoot.transform, portalPos + new Vector3(-0.50f, 1.10f, -0.05f), new Vector3(0.20f, 1.90f, 0.20f), pathIvoryMat, "Portal_Col_L");
+            CreateCylinder(archRoot.transform, portalPos + new Vector3(0.50f, 1.10f, -0.05f), new Vector3(0.20f, 1.90f, 0.20f), pathIvoryMat, "Portal_Col_R");
+
+            // Column Capitals (Burnished Gold)
+            CreateSphere(archRoot.transform, portalPos + new Vector3(-0.50f, 2.12f, -0.05f), new Vector3(0.26f, 0.18f, 0.26f), goldMat, "Portal_Col_Cap_L");
+            CreateSphere(archRoot.transform, portalPos + new Vector3(0.50f, 2.12f, -0.05f), new Vector3(0.26f, 0.18f, 0.26f), goldMat, "Portal_Col_Cap_R");
 
             // Mint Arch Entablature
-            CreateBlock(archRoot.transform, portalPos + new Vector3(0, 2.38f, 0), new Vector3(1.50f, 0.26f, 0.40f), trimMintMat, "Portal_Entablature");
+            CreateBlock(archRoot.transform, portalPos + new Vector3(0, 2.27f, -0.05f), new Vector3(1.36f, 0.18f, 0.28f), trimMintMat, "Portal_Entablature");
 
             // Golden Semicircular Dome Pediment
-            CreateSphere(archRoot.transform, portalPos + new Vector3(0, 2.62f, 0), new Vector3(0.85f, 0.50f, 0.38f), goldMat, "Portal_Dome_Pediment");
+            CreateSphere(archRoot.transform, portalPos + new Vector3(0, 2.50f, -0.05f), new Vector3(0.80f, 0.40f, 0.26f), goldMat, "Portal_Dome_Pediment");
 
             // Golden Needle Spire
-            CreateCylinder(archRoot.transform, portalPos + new Vector3(0, 3.10f, 0), new Vector3(0.08f, 0.45f, 0.08f), goldMat, "Portal_Spire");
-            CreateSphere(archRoot.transform, portalPos + new Vector3(0, 3.58f, 0), new Vector3(0.18f, 0.18f, 0.18f), goldMat, "Portal_Spire_Finial");
+            CreateCylinder(archRoot.transform, portalPos + new Vector3(0, 2.85f, -0.05f), new Vector3(0.08f, 0.35f, 0.08f), goldMat, "Portal_Spire");
+            CreateSphere(archRoot.transform, portalPos + new Vector3(0, 3.08f, -0.05f), new Vector3(0.14f, 0.14f, 0.14f), goldMat, "Portal_Spire_Finial");
 
-            // Flanking Corner Minarets on Platform 1
-            CreateMinaretTower(archRoot.transform, new Vector3(-2.35f, 0f, 1.45f), 4.2f, 0.30f, wallPeachMat, goldMat, trimMintMat, "Portal_Minaret_L");
-            CreateMinaretTower(archRoot.transform, new Vector3(0.35f, 0f, 1.45f), 4.2f, 0.30f, wallPeachMat, goldMat, trimMintMat, "Portal_Minaret_R");
-
-            // Minimalist geometric topiary planters on courtyard flanks
-            CreateTopiaryPlanter(archRoot.transform, new Vector3(-2.25f, 0f, 0.45f), "Planter_P1_1");
-            CreateTopiaryPlanter(archRoot.transform, new Vector3(-2.25f, 0f, -0.45f), "Planter_P1_2");
-
-            // Exit Door Logic & Visuals
-            CreateExitDoor(archRoot.transform, exitNode);
+            // Exit Door Logic & Visuals (links the front courtyard tile to the exit terrace platform)
+            CreateExitDoor(archRoot.transform, exitNode, entranceNode, additionalLockedNodes);
         }
 
         private void BuildPlatform2Architecture(Transform parent, Vector3 offset) {
@@ -443,7 +582,7 @@ namespace Level {
             // 3. Open-Air Domed Colonnade Pavilion
             Vector3 pavCenter = terracePos + new Vector3(0, 0.15f, 0.15f);
 
-            // 4 Slender Pavilion Pillars
+            // 4 Slender Pavilion Pillars (Grounded flush on terrace, no air gaps!)
             float colHalfW = 1.35f;
             float colHalfD = 0.55f;
             Vector3[] colOffsets = new Vector3[] {
@@ -453,38 +592,81 @@ namespace Level {
                 new Vector3(colHalfW, 0, colHalfD),
             };
 
+            float pillarHeight = 1.70f;
+            float pillarCenterY = pillarHeight * 0.5f;
             for (int i = 0; i < colOffsets.Length; i++) {
                 Vector3 colPos = pavCenter + colOffsets[i];
-                CreateCylinder(archRoot.transform, colPos + new Vector3(0, 0.85f, 0), new Vector3(0.22f, 0.85f, 0.22f), pathIvoryMat, $"Pavilion_Col_{i}");
-                CreateSphere(archRoot.transform, colPos + new Vector3(0, 1.75f, 0), new Vector3(0.30f, 0.30f, 0.30f), goldMat, $"Pavilion_Col_Cap_{i}");
+                CreateCylinder(archRoot.transform, colPos + new Vector3(0, pillarCenterY, 0), new Vector3(0.24f, pillarHeight, 0.24f), pathIvoryMat, $"Pavilion_Col_{i}");
+                CreateSphere(archRoot.transform, colPos + new Vector3(0, pillarHeight + 0.10f, 0), new Vector3(0.30f, 0.22f, 0.30f), goldMat, $"Pavilion_Col_Cap_{i}");
             }
 
-            // Mint Entablature Cornice
-            CreateBlock(archRoot.transform, pavCenter + new Vector3(0, 1.90f, 0), new Vector3(3.20f, 0.22f, 1.50f), trimMintMat, "Pavilion_Cornice");
+            // Mint Entablature Cornice (bottom touches the pillar caps)
+            float corniceBottomY = pillarHeight + 0.20f;
+            float corniceHeight = 0.22f;
+            float corniceCenterY = corniceBottomY + (corniceHeight * 0.5f);
+            CreateBlock(archRoot.transform, pavCenter + new Vector3(0, corniceCenterY, 0), new Vector3(3.20f, corniceHeight, 1.50f), trimMintMat, "Pavilion_Cornice");
 
-            // Grand Golden Pavilion Dome
-            CreateSphere(archRoot.transform, pavCenter + new Vector3(0, 2.50f, 0), new Vector3(2.20f, 1.25f, 1.50f), goldMat, "Pavilion_Dome");
+            // Grand Golden Pavilion Dome (rests directly on top of the cornice)
+            float domeBottomY = corniceCenterY + (corniceHeight * 0.5f);
+            float domeHeight = 1.25f;
+            float domeCenterY = domeBottomY + (domeHeight * 0.5f);
+            CreateSphere(archRoot.transform, pavCenter + new Vector3(0, domeCenterY, 0), new Vector3(2.20f, domeHeight, 1.50f), goldMat, "Pavilion_Dome");
 
-            // Golden Needle Spire
-            CreateCylinder(archRoot.transform, pavCenter + new Vector3(0, 3.40f, 0), new Vector3(0.10f, 0.65f, 0.10f), goldMat, "Pavilion_Spire");
-            CreateSphere(archRoot.transform, pavCenter + new Vector3(0, 4.10f, 0), new Vector3(0.24f, 0.24f, 0.24f), goldMat, "Pavilion_Spire_Finial");
+            // Golden Needle Spire (rests directly on top of the dome)
+            float domeTopY = domeBottomY + domeHeight;
+            float spireH = 0.65f;
+            float spireCenterY = domeTopY + (spireH * 0.5f);
+            CreateCylinder(archRoot.transform, pavCenter + new Vector3(0, spireCenterY, 0), new Vector3(0.10f, spireH, 0.10f), goldMat, "Pavilion_Spire");
+            CreateSphere(archRoot.transform, pavCenter + new Vector3(0, domeTopY + spireH + 0.10f, 0), new Vector3(0.22f, 0.22f, 0.22f), goldMat, "Pavilion_Spire_Finial");
 
-            // Flanking Ornamental Obelisks on Platform 2
-            CreateObelisk(archRoot.transform, new Vector3(4.4f, 0f, 1.25f) + offset, "Obelisk_P2_L");
-            CreateObelisk(archRoot.transform, new Vector3(7.6f, 0f, -0.25f) + offset, "Obelisk_P2_R");
+            // Flanking Ornamental Obelisks on Platform 2 (squarely aligned with supporting foundation piers)
+            CreateObelisk(archRoot.transform, new Vector3(4.60f, 0f, 1.25f) + offset, "Obelisk_P2_L");
+            CreateObelisk(archRoot.transform, new Vector3(7.40f, 0f, -0.25f) + offset, "Obelisk_P2_R");
         }
 
-        private void CreateTopiaryPlanter(Transform parent, Vector3 localPos, string name) {
-            GameObject planter = new GameObject(name);
-            planter.transform.SetParent(parent, false);
-            planter.transform.localPosition = localPos;
+        private void CreateCornerPilaster(Transform parent, Vector3 basePos, float totalHeight, float radius, Material bodyMat, Material trimMat, string name) {
+            GameObject col = new GameObject(name);
+            col.transform.SetParent(parent, false);
+            col.transform.position = basePos;
 
-            // Clean white cylinder pot
-            CreateCylinder(planter.transform, new Vector3(0, 0.18f, 0), new Vector3(0.36f, 0.18f, 0.36f), pathIvoryMat, "Pot");
-            // Mint rim
-            CreateCylinder(planter.transform, new Vector3(0, 0.36f, 0), new Vector3(0.40f, 0.04f, 0.40f), trimMintMat, "Rim");
-            // Pastel sphere foliage
-            CreateSphere(planter.transform, new Vector3(0, 0.60f, 0), new Vector3(0.46f, 0.46f, 0.46f), treeFoliageMat, "Topiary");
+            // 1. Plinth Base (Mint square plinth, rests squarely on foundation)
+            float baseH = 0.18f;
+            CreateBlock(col.transform, new Vector3(0, baseH * 0.5f, 0), new Vector3(radius * 2.4f, baseH, radius * 2.4f), trimMat, "Base");
+
+            // 2. Column Shaft (Peach cylindrical pillar)
+            float capH = 0.16f;
+            float shaftH = totalHeight - baseH - capH;
+            float shaftCenterY = baseH + (shaftH * 0.5f);
+            CreateCylinder(col.transform, new Vector3(0, shaftCenterY, 0), new Vector3(radius * 2f, shaftH, radius * 2f), bodyMat, "Shaft");
+
+            // 3. Capital Collar (Mint trim collar meeting underside of roof slab flush)
+            float capCenterY = totalHeight - (capH * 0.5f);
+            CreateCylinder(col.transform, new Vector3(0, capCenterY, 0), new Vector3(radius * 2.3f, capH, radius * 2.3f), trimMat, "Capital");
+        }
+
+        private void CreateRoofCornerFinial(Transform parent, Vector3 roofPos, float radius, Material goldMat, Material trimMat, string name) {
+            GameObject finial = new GameObject(name);
+            finial.transform.SetParent(parent, false);
+            finial.transform.position = roofPos;
+
+            // 1. Pedestal Plinth on roof (Mint disk)
+            float plinthH = 0.08f;
+            CreateCylinder(finial.transform, new Vector3(0, plinthH * 0.5f, 0), new Vector3(radius * 2.2f, plinthH, radius * 2.2f), trimMat, "Plinth");
+
+            // 2. Golden Spherical Dome
+            float domeD = radius * 2.0f;
+            float domeH = radius * 1.7f;
+            float domeCenterY = plinthH + (domeH * 0.5f);
+            CreateSphere(finial.transform, new Vector3(0, domeCenterY, 0), new Vector3(domeD, domeH, domeD), goldMat, "Dome");
+
+            // 3. Golden Needle Spire
+            float spireH = 0.52f;
+            float spireCenterY = plinthH + domeH + (spireH * 0.5f);
+            CreateCylinder(finial.transform, new Vector3(0, spireCenterY, 0), new Vector3(0.07f, spireH, 0.07f), goldMat, "Spire");
+
+            // 4. Golden Ball Finial Tip
+            float tipCenterY = plinthH + domeH + spireH + 0.06f;
+            CreateSphere(finial.transform, new Vector3(0, tipCenterY, 0), new Vector3(0.14f, 0.14f, 0.14f), goldMat, "Finial_Tip");
         }
 
         private void CreateObelisk(Transform parent, Vector3 worldPos, string name) {
@@ -492,70 +674,12 @@ namespace Level {
             obelisk.transform.SetParent(parent, false);
             obelisk.transform.position = worldPos;
 
-            // Stepped base
-            CreateBlock(obelisk.transform, new Vector3(0, 0.12f, 0), new Vector3(0.46f, 0.24f, 0.46f), trimMintMat, "Base");
+            // Stepped base (rests squarely and solidly on foundation pier)
+            CreateBlock(obelisk.transform, new Vector3(0, 0.10f, 0), new Vector3(0.44f, 0.20f, 0.44f), trimMintMat, "Base");
             // Slender shaft
-            CreateBlock(obelisk.transform, new Vector3(0, 0.70f, 0), new Vector3(0.32f, 0.95f, 0.32f), wallPeachMat, "Shaft");
+            CreateBlock(obelisk.transform, new Vector3(0, 0.675f, 0), new Vector3(0.32f, 0.95f, 0.32f), wallPeachMat, "Shaft");
             // Golden pyramidal cap / finial
-            CreateSphere(obelisk.transform, new Vector3(0, 1.25f, 0), new Vector3(0.28f, 0.32f, 0.28f), goldMat, "Finial");
-        }
-
-        private void CreateMinaretTower(Transform parent, Vector3 position, float totalHeight, float radius, Material bodyMat, Material domeMat, Material trimMat, string name) {
-            GameObject tower = new GameObject(name);
-            tower.transform.SetParent(parent, false);
-            tower.transform.position = position;
-
-            float shaftHeight = totalHeight - 1.8f;
-            // Cylindrical tower shaft
-            CreateCylinder(tower.transform, new Vector3(0, shaftHeight * 0.5f, 0), new Vector3(radius * 2f, shaftHeight * 0.5f, radius * 2f), bodyMat, "Tower_Shaft");
-
-            // Base plinth
-            CreateBlock(tower.transform, new Vector3(0, 0.4f, 0), new Vector3(radius * 2.6f, 0.8f, radius * 2.6f), trimMat, "Tower_Base");
-
-            // Balcony collar
-            CreateCylinder(tower.transform, new Vector3(0, shaftHeight, 0), new Vector3(radius * 2.4f, 0.25f, radius * 2.4f), trimMat, "Tower_Balcony");
-
-            // Dome
-            float domeY = shaftHeight + (radius * 0.9f);
-            CreateSphere(tower.transform, new Vector3(0, domeY, 0), new Vector3(radius * 2.2f, radius * 1.8f, radius * 2.2f), domeMat, "Tower_Dome");
-
-            // Golden needle spire
-            float spireY = domeY + (radius * 0.9f) + 0.5f;
-            CreateCylinder(tower.transform, new Vector3(0, spireY, 0), new Vector3(0.08f, 0.55f, 0.08f), domeMat, "Tower_Spire");
-            CreateSphere(tower.transform, new Vector3(0, spireY + 0.58f, 0), new Vector3(0.18f, 0.18f, 0.18f), domeMat, "Tower_Spire_Finial");
-        }
-
-        private void CreateGeometricTree(Transform parent, Vector3 position, float scale, string name) {
-            GameObject tree = new GameObject(name);
-            tree.transform.SetParent(parent, false);
-            tree.transform.position = position;
-
-            // Slender white trunk
-            CreateCylinder(tree.transform, new Vector3(0, 0.8f * scale, 0), new Vector3(0.12f * scale, 0.8f * scale, 0.12f * scale), treeTrunkMat, "Trunk");
-
-            // Geometric spherical foliage
-            CreateSphere(tree.transform, new Vector3(0, 1.8f * scale, 0), new Vector3(0.9f * scale, 0.9f * scale, 0.9f * scale), treeFoliageMat, "Foliage_Base");
-            CreateSphere(tree.transform, new Vector3(0, 2.3f * scale, 0), new Vector3(0.65f * scale, 0.65f * scale, 0.65f * scale), trimMintMat, "Foliage_Top");
-        }
-
-        private void CreateFloatingLilyPad(Transform parent, Vector3 position, float radius, string name) {
-            CreateCylinder(parent, position, new Vector3(radius * 2f, 0.04f, radius * 2f), waterPadMat, name);
-            // Center white/gold lotus bud
-            CreateSphere(parent, position + new Vector3(0, 0.06f, 0), new Vector3(0.24f, 0.14f, 0.24f), pathIvoryMat, name + "_Flower");
-            CreateSphere(parent, position + new Vector3(0, 0.10f, 0), new Vector3(0.10f, 0.10f, 0.10f), goldMat, name + "_Center");
-        }
-
-        private void CreateImpossibleStairs(Transform parent, Vector3 startPos, Vector3 stepDelta, int stepCount, Vector3 stepSize, Material mat, string name) {
-            GameObject group = new GameObject(name);
-            group.transform.SetParent(parent, false);
-            for (int i = 0; i < stepCount; i++) {
-                Vector3 pos = startPos + (stepDelta * i);
-                CreateBlock(group.transform, pos, stepSize, mat, $"Step_{i}");
-            }
-        }
-
-        private void CreateFloatingCube(Transform parent, Vector3 position, float size, Material mat, string name) {
-            CreateBlock(parent, position, Vector3.one * size, mat, name, Quaternion.Euler(45f, 45f, 0f));
+            CreateSphere(obelisk.transform, new Vector3(0, 1.25f, 0), new Vector3(0.28f, 0.28f, 0.28f), goldMat, "Finial");
         }
 
         private void CreateKeyItemAndAltar(Transform parent, PathNode node) {
@@ -563,22 +687,20 @@ namespace Level {
             keyRoot.transform.SetParent(parent, false);
             keyRoot.transform.position = node.transform.position;
 
-            // 1. Stepped Circular Geometric Pedestal
-            CreateCylinder(keyRoot.transform, new Vector3(0, 0.08f, 0), new Vector3(0.85f, 0.08f, 0.85f), trimMintMat, "Pedestal_Base");
-            CreateCylinder(keyRoot.transform, new Vector3(0, 0.22f, 0), new Vector3(0.68f, 0.12f, 0.68f), pathIvoryMat, "Pedestal_Mid");
-            CreateCylinder(keyRoot.transform, new Vector3(0, 0.38f, 0), new Vector3(0.50f, 0.12f, 0.50f), goldMat, "Pedestal_Top");
+            // Pedestal base cylinders removed per user request:
+            // Allows character to step cleanly onto the tile without mesh mixing awkwardly with the pedestal!
 
-            // 2. Floating Rotating Sacred Geometric Star Artifact
-            GameObject keyVisual = new GameObject("KeyVisual");
+            // Floating Radiant Star Artifact (Rotating geometric polyhedron)
+            GameObject keyVisual = new GameObject("Key_Star_Artifact");
             keyVisual.transform.SetParent(keyRoot.transform, false);
-            keyVisual.transform.localPosition = new Vector3(0, 0.95f, 0);
+            keyVisual.transform.localPosition = new Vector3(0f, 0.85f, 0f);
 
-            // Central golden octahedron / diamond
-            CreateBlock(keyVisual.transform, Vector3.zero, Vector3.one * 0.35f, goldMat, "Star_Core", Quaternion.Euler(45f, 45f, 45f));
-            // Interlocking mint jewel cube
-            CreateBlock(keyVisual.transform, Vector3.zero, Vector3.one * 0.26f, trimMintMat, "Star_Inner", Quaternion.Euler(0f, 45f, 0f));
+            // Central golden octahedron core (nested tilted cubes)
+            CreateBlock(keyVisual.transform, Vector3.zero, new Vector3(0.32f, 0.32f, 0.32f), goldMat, "Core_1", Quaternion.Euler(45f, 45f, 0f));
+            CreateBlock(keyVisual.transform, Vector3.zero, new Vector3(0.32f, 0.32f, 0.32f), goldMat, "Core_2", Quaternion.Euler(0f, 45f, 45f));
+
             // Golden halo ring
-            CreateCylinder(keyVisual.transform, new Vector3(0, 0.20f, 0), new Vector3(0.24f, 0.03f, 0.24f), goldMat, "Halo_Ring");
+            CreateCylinder(keyVisual.transform, new Vector3(0, 0.20f, 0), new Vector3(0.24f, 0.06f, 0.24f), goldMat, "Halo_Ring");
 
             // Radiant golden aura point light
             GameObject keyLightObj = new GameObject("KeyAura_Light");
@@ -596,61 +718,61 @@ namespace Level {
             SetPrivateField(keyComp, "visualModel", keyVisual);
         }
 
-        private void CreateExitDoor(Transform parent, PathNode node) {
+        private void CreateExitDoor(Transform parent, PathNode exitPlatformNode, PathNode entranceNode, List<PathNode> additionalLockedNodes = null) {
             GameObject doorRoot = new GameObject("ExitDoor");
             doorRoot.transform.SetParent(parent, false);
-            doorRoot.transform.position = node.transform.position;
+            doorRoot.transform.position = new Vector3(-1.0f, 0f, 1.45f);
 
-            Vector3 archCenter = node.transform.position + new Vector3(0f, 0f, 0.45f);
+            // Door Hinge Pivot on the LEFT side of the doorway frame (x = -0.42f)
+            GameObject doorHinge = new GameObject("Door_Left_Hinge");
+            doorHinge.transform.SetParent(doorRoot.transform, false);
+            doorHinge.transform.localPosition = new Vector3(-0.42f, 0f, 0f);
 
             // Closed Door Leaf (Serene Deep Indigo)
+            // Sized 0.84f width. Left edge sits right at the hinge pivot!
             GameObject closedDoor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             closedDoor.name = "ClosedDoor";
-            closedDoor.transform.SetParent(doorRoot.transform, false);
-            closedDoor.transform.position = archCenter + new Vector3(0, 0.95f, -0.05f);
-            closedDoor.transform.localScale = new Vector3(0.88f, 1.70f, 0.10f);
+            closedDoor.transform.SetParent(doorHinge.transform, false);
+            closedDoor.transform.localPosition = new Vector3(0.42f, 0.95f, 0f);
+            closedDoor.transform.localScale = new Vector3(0.84f, 1.76f, 0.08f);
             closedDoor.GetComponent<Renderer>().sharedMaterial = doorIndigoMat;
             var cdCol = closedDoor.GetComponent<Collider>();
             if (cdCol != null) DestroyImmediate(cdCol);
 
-            // Golden door handle emblem
-            GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            handle.name = "DoorHandle";
-            handle.transform.SetParent(closedDoor.transform, false);
-            handle.transform.localPosition = new Vector3(0.25f, 0f, -0.55f);
-            handle.transform.localScale = new Vector3(0.12f, 0.12f, 0.12f);
-            handle.GetComponent<Renderer>().sharedMaterial = goldMat;
-            var hCol = handle.GetComponent<Collider>();
-            if (hCol != null) DestroyImmediate(hCol);
+            // Golden door handle emblem near the right opening edge of the door leaf (front & back)
+            CreateCylinder(closedDoor.transform, new Vector3(0.32f, 0.0f, -0.05f), new Vector3(0.08f, 0.04f, 0.08f), goldMat, "DoorHandle_Front", Quaternion.Euler(90f, 0f, 0f));
+            CreateCylinder(closedDoor.transform, new Vector3(0.32f, 0.0f, 0.05f), new Vector3(0.08f, 0.04f, 0.08f), goldMat, "DoorHandle_Back", Quaternion.Euler(90f, 0f, 0f));
 
-            // Open Door Portal Quad (Radiant Glowing Warm Ivory pouring light)
+            // Interior warm portal glow quad behind door opening
             GameObject openPortal = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            openPortal.name = "OpenPortal";
+            openPortal.name = "OpenPortal_Glow";
             openPortal.transform.SetParent(doorRoot.transform, false);
-            openPortal.transform.position = archCenter + new Vector3(0f, 1.05f, 0.05f);
-            openPortal.transform.localScale = new Vector3(1.15f, 2.05f, 1f);
-            openPortal.transform.rotation = Quaternion.identity;
+            openPortal.transform.localPosition = new Vector3(0.0f, 0.95f, 0.05f);
+            openPortal.transform.localScale = new Vector3(0.80f, 1.70f, 1.0f);
+            openPortal.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
             openPortal.GetComponent<Renderer>().sharedMaterial = doorSunlightMat;
-            var qCol = openPortal.GetComponent<Collider>();
-            if (qCol != null) DestroyImmediate(qCol);
+            var pCol = openPortal.GetComponent<Collider>();
+            if (pCol != null) DestroyImmediate(pCol);
             openPortal.SetActive(false);
 
-            // Portal Light
+            // Warm interior spill point light
             GameObject doorLightObj = new GameObject("DoorLight");
             doorLightObj.transform.SetParent(doorRoot.transform, false);
-            doorLightObj.transform.position = archCenter + new Vector3(0f, 1.05f, 0.2f);
+            doorLightObj.transform.localPosition = new Vector3(0.0f, 1.0f, 0.2f);
             var dLight = doorLightObj.AddComponent<Light>();
             dLight.type = LightType.Point;
-            dLight.color = new Color(1.0f, 0.94f, 0.75f);
+            dLight.color = new Color(1.0f, 0.95f, 0.70f);
             dLight.intensity = 0f;
-            dLight.range = 5f;
+            dLight.range = 3.5f;
             dLight.shadows = LightShadows.None;
 
             var exitDoor = doorRoot.AddComponent<ExitDoor>();
-            SetPrivateField(exitDoor, "closedDoorVisual", closedDoor);
-            SetPrivateField(exitDoor, "openDoorVisual", openPortal);
+            // closedDoorVisual is the LEFT HINGE so it swings open outward towards the courtyard!
+            SetPrivateField(exitDoor, "closedDoorVisual", doorHinge);
+            SetPrivateField(exitDoor, "openPortalLight", openPortal);
             SetPrivateField(exitDoor, "doorLight", dLight);
-            exitDoor.Initialize(node);
+            SetPrivateField(exitDoor, "openAngleY", 90f);
+            exitDoor.Initialize(exitPlatformNode, entranceNode, additionalLockedNodes);
         }
 
         private void CreatePlayerCharacter(Transform parent, PathNode startNode) {
@@ -729,7 +851,7 @@ namespace Level {
             mainCam.orthographic = true;
             mainCam.orthographicSize = 6.0f;
             mainCam.clearFlags = CameraClearFlags.SolidColor;
-            // Serene Monument Valley Sky Background
+            // Warm golden parchment cream background (#F5E8A2)
             mainCam.backgroundColor = skyColor;
 
             // URP Camera Post-Processing & Anti-Aliasing
@@ -743,9 +865,9 @@ namespace Level {
             // Crisp vector-like geometry (no murky fog!)
             RenderSettings.fog = false;
 
-            // Soft pastel sky ambient fill (illuminates unlit sides with gentle cyan/lavender glow)
+            // Soft pastel warm ambient fill
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.42f, 0.54f, 0.64f);
+            RenderSettings.ambientLight = new Color(0.78f, 0.74f, 0.65f);
 
             var camController = mainCam.GetComponent<IsometricCameraController>();
             if (camController == null) {
@@ -764,158 +886,53 @@ namespace Level {
             SetPrivateField(camController, "currentSnapIndex", 0);
             camController.SetPivotTarget(pivotObj.transform, Vector3.zero);
 
-            // Perspective alignment manager
             var alignMgr = mainCam.GetComponent<PerspectiveAlignmentManager>();
             if (alignMgr == null) {
                 alignMgr = mainCam.gameObject.AddComponent<PerspectiveAlignmentManager>();
             }
             alignMgr.Configure(illusionYaw, 3.5f);
 
-            // Pointer interaction handler for New Input System
-            var raycaster = mainCam.GetComponent<PuzzleInteractionHandler>();
-            if (raycaster == null) {
-                raycaster = mainCam.gameObject.AddComponent<PuzzleInteractionHandler>();
-            }
-
-            // Level Manager & UI
-            GameObject mgrObj = GameObject.Find("LevelManager");
-            if (mgrObj == null) {
-                mgrObj = new GameObject("LevelManager");
-                mgrObj.transform.SetParent(parent, false);
-            }
-            var lvlMgr = mgrObj.GetComponent<LevelManager>();
-            if (lvlMgr == null) {
-                lvlMgr = mgrObj.AddComponent<LevelManager>();
-            }
-
-            var uiComp = mgrObj.GetComponent<GameUI>();
-            if (uiComp == null) {
-                uiComp = mgrObj.AddComponent<GameUI>();
-            }
-            uiComp.Initialize(camController, lvlMgr);
-
-            // 1. Warm Creamy Directional Sunlight
-            var dirLight = GameObject.Find("Directional Light");
-            if (dirLight != null) {
-                var l = dirLight.GetComponent<Light>();
-                if (l != null) {
-                    l.color = new Color(1.0f, 0.95f, 0.88f);
-                    l.intensity = 1.15f;
-                    l.shadows = LightShadows.Soft;
-                    l.shadowStrength = 0.60f; // Soft, gentle pastel shadows
-                    l.shadowBias = 0.02f;
-                    l.shadowNormalBias = 0.25f;
+            // Main Directional Sunlight (Warm, sharp Monument Valley shadows)
+            Light mainLight = null;
+            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None)) {
+                if (l.type == LightType.Directional) {
+                    mainLight = l;
+                    break;
                 }
-                dirLight.transform.rotation = Quaternion.Euler(45f, -35f, 0f);
             }
-
-            // 2. Clean Level Accent Spotlight
-            GameObject spotP1Obj = GameObject.Find("Level_Spotlight_P1");
-            if (spotP1Obj == null) {
-                spotP1Obj = new GameObject("Level_Spotlight_P1");
-                spotP1Obj.transform.SetParent(parent, false);
-                var sP1 = spotP1Obj.AddComponent<Light>();
-                sP1.type = LightType.Spot;
+            if (mainLight == null) {
+                var lObj = new GameObject("Directional Light");
+                mainLight = lObj.AddComponent<Light>();
+                mainLight.type = LightType.Directional;
             }
-            var sP1Light = spotP1Obj.GetComponent<Light>();
-            sP1Light.color = new Color(1.0f, 0.95f, 0.88f);
-            sP1Light.intensity = 2.2f;
-            sP1Light.range = 14f;
-            sP1Light.spotAngle = 65f;
-            sP1Light.innerSpotAngle = 38f;
-            sP1Light.shadows = LightShadows.None;
-            spotP1Obj.transform.position = new Vector3(-1.0f, 6.5f, 0.5f);
-            spotP1Obj.transform.rotation = Quaternion.Euler(75f, -30f, 0f);
+            mainLight.transform.rotation = Quaternion.Euler(50f, -40f, 0f);
+            mainLight.color = new Color(1.0f, 0.96f, 0.88f);
+            mainLight.intensity = 1.35f;
+            mainLight.shadows = LightShadows.Hard;
+            mainLight.shadowStrength = 0.45f;
 
-            GameObject spotBridgeObj = GameObject.Find("Level_Spotlight_Bridge");
-            if (spotBridgeObj == null) {
-                spotBridgeObj = new GameObject("Level_Spotlight_Bridge");
-                spotBridgeObj.transform.SetParent(parent, false);
-                var sB = spotBridgeObj.AddComponent<Light>();
-                sB.type = LightType.Spot;
+            // Sky / Fill Light (Soft mint-sky fill for pastel architectural contrast)
+            GameObject fillObj = GameObject.Find("Fill_Light");
+            if (fillObj == null) {
+                fillObj = new GameObject("Fill_Light");
+                fillObj.transform.SetParent(parent, false);
             }
-            var sBLight = spotBridgeObj.GetComponent<Light>();
-            sBLight.color = new Color(1.0f, 0.95f, 0.88f);
-            sBLight.intensity = 1.8f;
-            sBLight.range = 12f;
-            sBLight.spotAngle = 55f;
-            sBLight.innerSpotAngle = 32f;
-            sBLight.shadows = LightShadows.None;
-            spotBridgeObj.transform.position = new Vector3(2.5f, 5.5f, 0.0f);
-            spotBridgeObj.transform.rotation = Quaternion.Euler(80f, 0f, 0f);
+            var fillLight = fillObj.GetComponent<Light>();
+            if (fillLight == null) fillLight = fillObj.AddComponent<Light>();
+            fillLight.type = LightType.Directional;
+            fillLight.transform.rotation = Quaternion.Euler(-30f, 140f, 0f);
+            fillLight.color = new Color(0.70f, 0.85f, 0.90f);
+            fillLight.intensity = 0.55f;
+            fillLight.shadows = LightShadows.None;
 
-            GameObject spotP2Obj = GameObject.Find("Level_Spotlight_P2");
-            if (spotP2Obj == null) {
-                spotP2Obj = new GameObject("Level_Spotlight_P2");
-                spotP2Obj.transform.SetParent(parent, false);
-                var sP2 = spotP2Obj.AddComponent<Light>();
-                sP2.type = LightType.Spot;
+            // Setup UI Managers
+            GameObject uiObj = GameObject.Find("GameUI");
+            if (uiObj == null) {
+                uiObj = new GameObject("GameUI");
+                uiObj.transform.SetParent(parent, false);
             }
-            var sP2Light = spotP2Obj.GetComponent<Light>();
-            sP2Light.color = new Color(1.0f, 0.95f, 0.88f);
-            sP2Light.intensity = 2.2f;
-            sP2Light.range = 14f;
-            sP2Light.spotAngle = 65f;
-            sP2Light.innerSpotAngle = 38f;
-            sP2Light.shadows = LightShadows.None;
-            spotP2Obj.transform.position = new Vector3(6.0f, 4.5f, 1.0f) + illusionOffset;
-            spotP2Obj.transform.rotation = Quaternion.Euler(75f, -30f, 0f);
-
-            // Clean up any old unused lights
-            var oldFill = GameObject.Find("Atmospheric_Fill_Light");
-            if (oldFill != null) DestroyImmediate(oldFill);
-            var oldFloor = GameObject.Find("Subterranean_Floor_Light");
-            if (oldFloor != null) DestroyImmediate(oldFloor);
-
-            // 3. Post-Processing Volume (ACES Tonemapping & Subtle Bloom)
-            SetupPostProcessing(parent);
-        }
-
-        private void SetupPostProcessing(Transform parent) {
-            GameObject volObj = GameObject.Find("PostProcess_Volume");
-            if (volObj == null) {
-                volObj = new GameObject("PostProcess_Volume");
-                volObj.transform.SetParent(parent, false);
-            }
-            var vol = volObj.GetComponent<Volume>();
-            if (vol == null) vol = volObj.AddComponent<Volume>();
-            vol.isGlobal = true;
-
-            var profile = vol.sharedProfile;
-            if (profile == null) {
-                profile = ScriptableObject.CreateInstance<VolumeProfile>();
-                profile.name = "MonumentValley_Profile";
-                vol.sharedProfile = profile;
-            }
-
-            // ACES Tonemapping for rich filmic pastel palette
-            Tonemapping tone;
-            if (!profile.TryGet(out tone)) tone = profile.Add<Tonemapping>(true);
-            tone.active = true;
-            tone.mode.overrideState = true;
-            tone.mode.value = TonemappingMode.ACES;
-
-            // Subtle gentle bloom on gold and portal
-            Bloom bloom;
-            if (!profile.TryGet(out bloom)) bloom = profile.Add<Bloom>(true);
-            bloom.active = true;
-            bloom.threshold.overrideState = true;
-            bloom.threshold.value = 0.92f;
-            bloom.intensity.overrideState = true;
-            bloom.intensity.value = 1.0f;
-            bloom.tint.overrideState = true;
-            bloom.tint.value = new Color(1.0f, 0.95f, 0.85f);
-
-            // Color adjustments
-            ColorAdjustments ca;
-            if (!profile.TryGet(out ca)) ca = profile.Add<ColorAdjustments>(true);
-            ca.active = true;
-            ca.contrast.overrideState = true;
-            ca.contrast.value = 15f;
-            ca.saturation.overrideState = true;
-            ca.saturation.value = 12f;
-            ca.postExposure.overrideState = true;
-            ca.postExposure.value = 0.10f;
+            if (uiObj.GetComponent<GameUI>() == null) uiObj.AddComponent<GameUI>();
+            if (uiObj.GetComponent<LevelManager>() == null) uiObj.AddComponent<LevelManager>();
         }
 
         private PathNode CreateTile(Transform parent, Vector3 position, string name) {
@@ -946,90 +963,113 @@ namespace Level {
             var node = tileObj.AddComponent<PathNode>();
             SetPrivateField(node, "standingOffset", new Vector3(0f, 0.10f, 0f));
             SetPrivateField(node, "tileRenderer", rend);
+            SetPrivateField(node, "normalColor", Color.white);
 
             return node;
         }
 
+        private PathNode CreateCompleteLevelTile(Transform parent, Vector3 position, string name) {
+            PathNode node = CreateTile(parent, position, name);
+
+            // Sacred Monument Valley Goal Dais:
+            // 1. Outer Golden Medallion Ring
+            CreateCylinder(node.transform, new Vector3(0f, 0.095f, 0f), new Vector3(0.72f, 0.02f, 0.72f), goldMat, "Goal_OuterRing");
+            // 2. Inner Mint Rosette Ring
+            CreateCylinder(node.transform, new Vector3(0f, 0.105f, 0f), new Vector3(0.50f, 0.02f, 0.50f), trimMintMat, "Goal_InnerRing");
+            // 3. Central Burnished Gold Medallion Dais
+            CreateCylinder(node.transform, new Vector3(0f, 0.115f, 0f), new Vector3(0.32f, 0.02f, 0.32f), goldMat, "Goal_CenterDais");
+
+            // 4. Geometric 'X' Cross Emblem (honoring the user's hand-drawn 'X')
+            CreateBlock(node.transform, new Vector3(0f, 0.125f, 0f), new Vector3(0.38f, 0.02f, 0.07f), trimMintMat, "Goal_Cross_1", Quaternion.Euler(0f, 45f, 0f));
+            CreateBlock(node.transform, new Vector3(0f, 0.125f, 0f), new Vector3(0.38f, 0.02f, 0.07f), trimMintMat, "Goal_Cross_2", Quaternion.Euler(0f, -45f, 0f));
+
+            // 5. Golden Goal Aura Point Light
+            GameObject goalLight = new GameObject("Goal_Aura_Light");
+            goalLight.transform.SetParent(node.transform, false);
+            goalLight.transform.localPosition = new Vector3(0f, 0.60f, 0f);
+            var gLight = goalLight.AddComponent<Light>();
+            gLight.type = LightType.Point;
+            gLight.color = new Color(1.0f, 0.88f, 0.40f);
+            gLight.intensity = 2.4f;
+            gLight.range = 3.5f;
+            gLight.shadows = LightShadows.None;
+
+            SetPrivateField(node, "standingOffset", new Vector3(0f, 0.13f, 0f));
+            return node;
+        }
+
         private GameObject CreateBlock(Transform parent, Vector3 localPos, Vector3 localScale, Material mat, string name = "Block", Quaternion? localRot = null) {
-            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            block.name = name;
-            block.transform.SetParent(parent, false);
-            block.transform.localPosition = localPos;
-            block.transform.localScale = localScale;
-            if (localRot.HasValue) block.transform.localRotation = localRot.Value;
-
-            var col = block.GetComponent<Collider>();
-            if (col != null) {
-                if (Application.isPlaying) Destroy(col);
-                else DestroyImmediate(col);
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            if (localRot.HasValue) {
+                go.transform.localRotation = localRot.Value;
             }
+            go.GetComponent<Renderer>().sharedMaterial = mat;
 
-            if (mat != null) {
-                block.GetComponent<Renderer>().sharedMaterial = mat;
-            }
-            return block;
+            var col = go.GetComponent<Collider>();
+            if (col != null) DestroyImmediate(col);
+
+            return go;
         }
 
         private GameObject CreateCylinder(Transform parent, Vector3 localPos, Vector3 localScale, Material mat, string name = "Cylinder", Quaternion? localRot = null) {
-            GameObject cyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            cyl.name = name;
-            cyl.transform.SetParent(parent, false);
-            cyl.transform.localPosition = localPos;
-            cyl.transform.localScale = localScale;
-            if (localRot.HasValue) cyl.transform.localRotation = localRot.Value;
-
-            var col = cyl.GetComponent<Collider>();
-            if (col != null) {
-                if (Application.isPlaying) Destroy(col);
-                else DestroyImmediate(col);
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            // Cylinder primitive height is 2.0 along Y, so half the localScale.y to match world units
+            go.transform.localScale = new Vector3(localScale.x, localScale.y * 0.5f, localScale.z);
+            if (localRot.HasValue) {
+                go.transform.localRotation = localRot.Value;
             }
+            go.GetComponent<Renderer>().sharedMaterial = mat;
 
-            if (mat != null) {
-                cyl.GetComponent<Renderer>().sharedMaterial = mat;
-            }
-            return cyl;
+            var col = go.GetComponent<Collider>();
+            if (col != null) DestroyImmediate(col);
+
+            return go;
         }
 
         private GameObject CreateSphere(Transform parent, Vector3 localPos, Vector3 localScale, Material mat, string name = "Sphere") {
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.name = name;
-            sphere.transform.SetParent(parent, false);
-            sphere.transform.localPosition = localPos;
-            sphere.transform.localScale = localScale;
+            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            go.GetComponent<Renderer>().sharedMaterial = mat;
 
-            var col = sphere.GetComponent<Collider>();
-            if (col != null) {
-                if (Application.isPlaying) Destroy(col);
-                else DestroyImmediate(col);
-            }
+            var col = go.GetComponent<Collider>();
+            if (col != null) DestroyImmediate(col);
 
-            if (mat != null) {
-                sphere.GetComponent<Renderer>().sharedMaterial = mat;
-            }
-            return sphere;
+            return go;
         }
 
         private static void ConnectGridNeighbors(Dictionary<Vector2Int, PathNode> nodes) {
-            Vector2Int[] dirs = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+            Vector2Int[] dirs = new Vector2Int[] {
+                Vector2Int.right,
+                Vector2Int.left,
+                Vector2Int.up,
+                Vector2Int.down
+            };
 
             foreach (var kvp in nodes) {
-                Vector2Int coord = kvp.Key;
-                PathNode node = kvp.Value;
+                Vector2Int pos = kvp.Key;
+                PathNode current = kvp.Value;
 
-                for (int d = 0; d < dirs.Length; d++) {
-                    Vector2Int neighborCoord = coord + dirs[d];
-                    if (nodes.TryGetValue(neighborCoord, out PathNode neighbor)) {
-                        node.AddNeighbor(neighbor);
+                foreach (var d in dirs) {
+                    Vector2Int neighborPos = pos + d;
+                    if (nodes.TryGetValue(neighborPos, out PathNode neighbor)) {
+                        current.AddNeighbor(neighbor);
                     }
                 }
             }
         }
 
         private static void SetPrivateField(object target, string fieldName, object value) {
-            var field = target.GetType().GetField(fieldName,
-                System.Reflection.BindingFlags.Instance |
-                System.Reflection.BindingFlags.NonPublic |
-                System.Reflection.BindingFlags.Public);
+            var field = target.GetType().GetField(fieldName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             if (field != null) {
                 field.SetValue(target, value);
             }

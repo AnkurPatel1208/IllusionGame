@@ -113,42 +113,83 @@ namespace UI {
 
         private void OnGUI() {
             InitStyles();
-
-            // 1. Top Header
-            GUILayout.BeginArea(new Rect(25, 20, 450, 100));
-            GUILayout.Label("ILLUSION", titleStyle);
-            GUILayout.Label("LEVEL 1 – THE PERSPECTIVE BRIDGE", subtitleStyle);
-            string objectiveText = !hasKey 
-                ? "Rotate camera to align platforms, then reach the key."
-                : "Key collected! Cross back and enter the illuminated door.";
-            GUILayout.Label(objectiveText, subtitleStyle);
-            GUILayout.EndArea();
-
-            // 2. Alignment Status Badge (Right side, matching the reference image)
-            float badgeWidth = 210;
-            float badgeHeight = 55;
-            Rect badgeRect = new Rect(Screen.width - badgeWidth - 25, 25, badgeWidth, badgeHeight);
-
             Color originalColor = GUI.color;
-            if (isPerspectiveAligned) {
-                GUI.color = new Color(0.2f, 0.85f, 0.35f, 0.95f);
-                GUI.Box(badgeRect, "✔  ALIGNED!\nWalk across the bridge", statusBadgeStyle);
-            } else {
-                GUI.color = new Color(0.9f, 0.25f, 0.25f, 0.95f);
-                GUI.Box(badgeRect, "✖  NOT CONNECTED\nRotate camera to align", statusBadgeStyle);
-            }
-            GUI.color = originalColor;
 
-            // 3. Key Inventory Indicator
-            if (hasKey) {
-                Rect keyRect = new Rect(Screen.width - badgeWidth - 25, 90, badgeWidth, 35);
-                GUI.color = new Color(1f, 0.85f, 0.2f, 0.95f);
-                GUI.Box(keyRect, "★  KEY COLLECTED", statusBadgeStyle);
+            bool isPortrait = Screen.width < Screen.height;
+
+            if (isPortrait) {
+                // Portrait Layout: Clean, centered title and status badge
+                titleStyle.alignment = TextAnchor.UpperCenter;
+                subtitleStyle.alignment = TextAnchor.UpperCenter;
+
+                float headerWidth = Mathf.Min(Screen.width - 40, 500);
+                GUILayout.BeginArea(new Rect((Screen.width - headerWidth) * 0.5f, 20, headerWidth, 75));
+                GUILayout.Label("ILLUSION", titleStyle);
+                GUILayout.Label("LEVEL 1 – THE PERSPECTIVE BRIDGE", subtitleStyle);
+                string objectiveText = !hasKey 
+                    ? "Rotate camera to align platforms, then reach the key."
+                    : "Key collected! Cross back and enter the illuminated door.";
+                GUILayout.Label(objectiveText, subtitleStyle);
+                GUILayout.EndArea();
+
+                float badgeWidth = Mathf.Min(Screen.width - 50, 240);
+                float badgeHeight = 40;
+                Rect badgeRect = new Rect((Screen.width - badgeWidth) * 0.5f, 100, badgeWidth, badgeHeight);
+
+                originalColor = GUI.color;
+                if (isPerspectiveAligned) {
+                    GUI.color = new Color(0.2f, 0.85f, 0.35f, 0.95f);
+                    GUI.Box(badgeRect, "✔  ALIGNED! Walk across bridge", statusBadgeStyle);
+                } else {
+                    GUI.color = new Color(0.9f, 0.25f, 0.25f, 0.95f);
+                    GUI.Box(badgeRect, "✖  NOT CONNECTED (Rotate to align)", statusBadgeStyle);
+                }
                 GUI.color = originalColor;
+
+                if (hasKey) {
+                    Rect keyRect = new Rect((Screen.width - badgeWidth) * 0.5f, 146, badgeWidth, 32);
+                    GUI.color = new Color(1f, 0.85f, 0.2f, 0.95f);
+                    GUI.Box(keyRect, "★  KEY COLLECTED", statusBadgeStyle);
+                    GUI.color = originalColor;
+                }
+            } else {
+                // Landscape Layout: Header on left, badges on right
+                titleStyle.alignment = TextAnchor.UpperLeft;
+                subtitleStyle.alignment = TextAnchor.UpperLeft;
+
+                GUILayout.BeginArea(new Rect(25, 20, 450, 100));
+                GUILayout.Label("ILLUSION", titleStyle);
+                GUILayout.Label("LEVEL 1 – THE PERSPECTIVE BRIDGE", subtitleStyle);
+                string objectiveText = !hasKey 
+                    ? "Rotate camera to align platforms, then reach the key."
+                    : "Key collected! Cross back and enter the illuminated door.";
+                GUILayout.Label(objectiveText, subtitleStyle);
+                GUILayout.EndArea();
+
+                float badgeWidth = 210;
+                float badgeHeight = 55;
+                Rect badgeRect = new Rect(Screen.width - badgeWidth - 25, 25, badgeWidth, badgeHeight);
+
+                originalColor = GUI.color;
+                if (isPerspectiveAligned) {
+                    GUI.color = new Color(0.2f, 0.85f, 0.35f, 0.95f);
+                    GUI.Box(badgeRect, "✔  ALIGNED!\nWalk across the bridge", statusBadgeStyle);
+                } else {
+                    GUI.color = new Color(0.9f, 0.25f, 0.25f, 0.95f);
+                    GUI.Box(badgeRect, "✖  NOT CONNECTED\nRotate camera to align", statusBadgeStyle);
+                }
+                GUI.color = originalColor;
+
+                if (hasKey) {
+                    Rect keyRect = new Rect(Screen.width - badgeWidth - 25, 90, badgeWidth, 35);
+                    GUI.color = new Color(1f, 0.85f, 0.2f, 0.95f);
+                    GUI.Box(keyRect, "★  KEY COLLECTED", statusBadgeStyle);
+                    GUI.color = originalColor;
+                }
             }
 
             // 4. Camera Controls (Bottom Center)
-            float controlWidth = 360;
+            float controlWidth = Mathf.Min(Screen.width - 40, 360);
             float controlHeight = 55;
             Rect controlRect = new Rect((Screen.width - controlWidth) * 0.5f, Screen.height - controlHeight - 20, controlWidth, controlHeight);
             GUILayout.BeginArea(controlRect);
@@ -167,8 +208,10 @@ namespace UI {
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
-            // 5. Reset button (Bottom Left)
-            if (GUI.Button(new Rect(25, Screen.height - 50, 110, 35), "↺ Reset", buttonStyle)) {
+            // 5. Reset button
+            float resetX = isPortrait ? 15 : 25;
+            float resetY = isPortrait ? (Screen.height - controlHeight - 65) : (Screen.height - 50);
+            if (GUI.Button(new Rect(resetX, resetY, 95, 35), "↺ Reset", buttonStyle)) {
                 if (levelManager != null) {
                     levelManager.RestartLevel();
                 } else {

@@ -58,11 +58,13 @@
     <Compile Include="Assets/Scripts/Gameplay/ExitDoor.cs" />
     <Compile Include="Assets/Scripts/Grid/Pathfinder.cs" />
     <Compile Include="Assets/Scripts/Core/Events/GameEvents.cs" />
+    <Compile Include="Assets/Scripts/Camera/CameraOcclusionManager.cs" />
     <Compile Include="Assets/Scripts/UI/GameUI.cs" />
     <Compile Include="Assets/Scripts/Grid/PuzzleInteractionHandler.cs" />
     <Compile Include="Assets/Scripts/Level/Level1Builder.cs" />
     <None Include="Assets/Fantastic Dungeon Pack/scenes/README.txt" />
     <None Include="Assets/___www.unityassetcollection.com___.txt" />
+    <None Include="Assets/Shaders/CartoonWater.shader" />
     <None Include="Assets/Fantastic Dungeon Pack/shaders/S_doublesided_lit_nonormal.shader" />
     <Reference Include="UnityEngine">
       <HintPath>/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine/UnityEngine.dll</HintPath>
