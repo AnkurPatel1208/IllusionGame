@@ -6,12 +6,13 @@ using UnityEngine.InputSystem;
 namespace CameraControl {
     /// <summary>
     /// Controls an orthographic isometric camera rotating around a central puzzle pivot.
-    /// Supports:
-    /// - Mouse drag on PC (left-click drag or right-click drag)
-    /// - Touch swipe / flick on Mobile
-    /// - Keyboard rotation (Q/E or arrows)
-    /// - Dynamic portrait mode adaptation (scales orthographicSize to maintain framing across all aspect ratios)
-    /// - Seamless snapping to nearest 90-degree isometric angles
+    /// Provides:
+    /// - Smooth 1:1 finger/mouse tracking while dragging (responsive, zero lag, silky smooth)
+    /// - Natural inertial throw momentum on release
+    /// - Soft magnetic snapping to isometric snap angles (45°, 135°, 225°, 315°)
+    /// - Luxurious ease-in-out cushioned landing (no abrupt rigid quarter steps)
+    /// - Keyboard rotation (Q/E or arrows) with smooth ease
+    /// - Dynamic portrait mode adaptation maintaining framing across all aspect ratios
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class IsometricCameraController : MonoBehaviour {
@@ -28,18 +29,28 @@ namespace CameraControl {
         [SerializeField] private float targetVisibleWidth = 13.5f;
         [SerializeField] private float minOrthoSize = 9.5f;
 
-        [Header("Rotation Settings")]
-        [Tooltip("Available snap angles in degrees yaw")]
+        [Header("Rotation & Snap Settings")]
+        [Tooltip("Available isometric snap angles in degrees yaw")]
         [SerializeField] private float[] snapAngles = new float[] { 45f, 135f, 225f, 315f };
-        [SerializeField] private int currentSnapIndex = 1; // Default to 135 deg (separated angle)
-        [SerializeField] private float rotationSpeed = 8f; // Smooth damp speed
-        [SerializeField] private float dragSensitivity = 0.35f;
+        [SerializeField] private int currentSnapIndex = 0;
+        [Tooltip("Smooth time when settling into a snap angle on release (higher = silkier and smoother)")]
+        [SerializeField] private float snapSmoothTime = 0.38f;
+        [Tooltip("Sensitivity of finger/mouse drag in degrees per pixel")]
+        [SerializeField] private float dragSensitivity = 0.32f;
 
-        [Header("Drag & Swipe Settings")]
+        [Header("Smooth Drag & Momentum Settings")]
         [SerializeField] private bool allowDrag = true;
         [SerializeField] private bool snapOnRelease = true;
-        [SerializeField] private float dragStartThreshold = 10f; // Pixels of movement before drag engages
-        [SerializeField] private float flickVelocityThreshold = 350f; // Pixels/second for swipe flick gesture
+        [Tooltip("Responsiveness while directly dragging (lower = tighter 1:1 tracking)")]
+        [SerializeField] private float dragSmoothTime = 0.04f;
+        [Tooltip("Minimum movement in pixels before drag gesture begins")]
+        [SerializeField] private float dragStartThreshold = 8f;
+        [Tooltip("Multiplier for inertial throw momentum on release")]
+        [SerializeField] private float momentumMultiplier = 0.16f;
+        [Tooltip("Minimum swipe velocity (deg/sec) to trigger inertial momentum throw")]
+        [SerializeField] private float minSwipeVelocity = 40f;
+        [Tooltip("Maximum velocity momentum carried on release (deg/sec)")]
+        [SerializeField] private float maxMomentumVelocity = 500f;
 
         private Camera cam;
         private float currentYaw;
@@ -52,7 +63,7 @@ namespace CameraControl {
         private bool isPointerDown;
         private Vector2 pointerDownPosition;
         private Vector2 lastPointerPosition;
-        private float smoothedVelocityX;
+        private float smoothedAngularVelocity;
         private int activeTouchId = -1;
 
         public float CurrentYaw => currentYaw;
@@ -71,8 +82,8 @@ namespace CameraControl {
                 currentYaw = snapAngles[currentSnapIndex];
                 targetYaw = currentYaw;
             } else {
-                currentYaw = 135f;
-                targetYaw = 135f;
+                currentYaw = 45f;
+                targetYaw = 45f;
             }
         }
 
@@ -136,7 +147,6 @@ namespace CameraControl {
 
             // Handle Pointer Down
             if (pointerDownThisFrame) {
-                // Ignore if clicked on UI
                 if (IsPointerOverUI(touchId)) {
                     isPointerDown = false;
                     isDragging = false;
@@ -148,43 +158,49 @@ namespace CameraControl {
                 activeTouchId = touchId;
                 pointerDownPosition = currentPointerPos;
                 lastPointerPosition = currentPointerPos;
-                smoothedVelocityX = 0f;
+                smoothedAngularVelocity = 0f;
             }
 
-            // Handle Pointer Held (Dragging / Swiping)
+            // Handle Pointer Held (1:1 Direct Finger Tracking)
             if (pointerHeld && isPointerDown) {
                 float totalMoveDist = Vector2.Distance(currentPointerPos, pointerDownPosition);
 
                 if (!isDragging && totalMoveDist >= dragStartThreshold) {
                     isDragging = true;
                     lastPointerPosition = currentPointerPos;
+                    smoothedAngularVelocity = 0f;
                 }
 
                 if (isDragging) {
                     float deltaX = currentPointerPos.x - lastPointerPosition.x;
-                    float instantVel = Time.deltaTime > 0f ? deltaX / Time.deltaTime : 0f;
-                    smoothedVelocityX = Mathf.Lerp(smoothedVelocityX, instantVel, Time.deltaTime * 20f);
+                    float dt = Mathf.Max(Time.deltaTime, 0.001f);
+                    float instantAngularVel = (deltaX * dragSensitivity) / dt;
+
+                    // Smooth angular velocity tracking for natural release momentum
+                    smoothedAngularVelocity = Mathf.Lerp(smoothedAngularVelocity, instantAngularVel, dt * 25f);
 
                     targetYaw += deltaX * dragSensitivity;
                     lastPointerPosition = currentPointerPos;
                 }
             }
 
-            // Handle Pointer Up (Release)
+            // Handle Pointer Up (Inertial Momentum Throw & Soft Magnetic Snapping)
             if (pointerUpThisFrame && isPointerDown) {
                 if (isDragging) {
                     isDragging = false;
 
                     if (snapOnRelease) {
-                        // Check for swipe flick gesture
-                        if (Mathf.Abs(smoothedVelocityX) > flickVelocityThreshold) {
-                            if (smoothedVelocityX > 0f) {
-                                RotateToNextSnap();
-                            } else {
-                                RotateToPreviousSnap();
-                            }
+                        float releaseVelocity = Mathf.Clamp(smoothedAngularVelocity, -maxMomentumVelocity, maxMomentumVelocity);
+
+                        if (Mathf.Abs(releaseVelocity) > minSwipeVelocity) {
+                            // Calculate projected stopping point using physical momentum throw
+                            float projectedYaw = currentYaw + (releaseVelocity * momentumMultiplier);
+                            targetYaw = GetNearestSnapAngle(projectedYaw);
+                            yawVelocity = releaseVelocity; // Carry physical momentum into the smooth damp glide!
                         } else {
-                            SnapToNearestAngle();
+                            // Gentle release: smoothly settle into the closest snap angle
+                            targetYaw = GetNearestSnapAngle(currentYaw);
+                            yawVelocity = 0f;
                         }
                     }
                 }
@@ -219,12 +235,12 @@ namespace CameraControl {
             targetYaw = NormalizeAngle(yaw);
         }
 
-        private void SnapToNearestAngle() {
-            if (snapAngles == null || snapAngles.Length == 0) return;
+        private float GetNearestSnapAngle(float fromYaw) {
+            if (snapAngles == null || snapAngles.Length == 0) return fromYaw;
 
             float minDiff = float.MaxValue;
             int bestIndex = 0;
-            float normTarget = NormalizeAngle(targetYaw);
+            float normTarget = NormalizeAngle(fromYaw);
 
             for (int i = 0; i < snapAngles.Length; i++) {
                 float diff = Mathf.Abs(Mathf.DeltaAngle(normTarget, snapAngles[i]));
@@ -235,12 +251,26 @@ namespace CameraControl {
             }
 
             currentSnapIndex = bestIndex;
-            targetYaw = snapAngles[bestIndex];
+            return snapAngles[bestIndex];
+        }
+
+        private void SnapToNearestAngle() {
+            targetYaw = GetNearestSnapAngle(targetYaw);
         }
 
         private void ApplyRotation() {
             float prevYaw = currentYaw;
-            currentYaw = Mathf.SmoothDampAngle(currentYaw, targetYaw, ref yawVelocity, 1f / rotationSpeed);
+
+            // Use tight responsive damping while dragging for 1:1 feel,
+            // and luxurious smooth cushioning when easing to a snap angle!
+            float currentSmoothTime = isDragging ? dragSmoothTime : snapSmoothTime;
+            currentYaw = Mathf.SmoothDampAngle(currentYaw, targetYaw, ref yawVelocity, currentSmoothTime);
+
+            // Snap flush when practically stopped
+            if (!isDragging && Mathf.Abs(Mathf.DeltaAngle(currentYaw, targetYaw)) < 0.02f && Mathf.Abs(yawVelocity) < 0.2f) {
+                currentYaw = targetYaw;
+                yawVelocity = 0f;
+            }
 
             bool wasRotating = isRotating;
             isRotating = Mathf.Abs(Mathf.DeltaAngle(currentYaw, targetYaw)) > 0.05f || isDragging;
