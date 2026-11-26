@@ -30,6 +30,16 @@ namespace EditorTools {
                 BuildLevel1Scene();
             }
 
+            string l2Trigger = "Temp/BakeLevel2Trigger.txt";
+            if (File.Exists(l2Trigger)) {
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating) {
+                    return;
+                }
+                try { File.Delete(l2Trigger); } catch { }
+                Debug.Log("<color=cyan>[Level1EditorMenu]</color> Baking Level 2 via Level2EditorMenu...");
+                Level2EditorMenu.BuildLevel2Scene();
+            }
+
             string doorTrigger = "Temp/CaptureDoorOpenTrigger.txt";
             if (File.Exists(doorTrigger)) {
                 if (EditorApplication.isCompiling || EditorApplication.isUpdating) {

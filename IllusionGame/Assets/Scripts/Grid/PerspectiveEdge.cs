@@ -1,3 +1,4 @@
+using CameraControl;
 using Core.Events;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ namespace Grid {
     /// Represents an optical illusion bridge connection between two physically disconnected nodes.
     /// Only active and walkable when the camera is oriented at the required perspective angle.
     /// </summary>
-    public class PerspectiveEdge : MonoBehaviour, IEventListener<PerspectiveAlignmentChangedEvent> {
+    public class PerspectiveEdge : MonoBehaviour, IEventListener<PerspectiveAlignmentChangedEvent>, IEventListener<CameraRotationChangedEvent> {
         [Header("Connected Nodes")]
         [SerializeField] private PathNode nodeA;
         [SerializeField] private PathNode nodeB;
@@ -15,7 +16,7 @@ namespace Grid {
         [Tooltip("Target camera yaw angle where the optical illusion aligns (0 - 360)")]
         [SerializeField] private float targetYaw = 45f;
         [Tooltip("Allowed angle difference to consider the perspective aligned (in degrees)")]
-        [SerializeField] private float angleTolerance = 3f;
+        [SerializeField] private float angleTolerance = 3.5f;
 
         [Header("State")]
         [SerializeField] private bool isActive;
@@ -28,20 +29,40 @@ namespace Grid {
 
         private void OnEnable() {
             EventBus<PerspectiveAlignmentChangedEvent>.Subscribe(this);
+            EventBus<CameraRotationChangedEvent>.Subscribe(this);
             RegisterToNodes();
         }
 
         private void OnDisable() {
             EventBus<PerspectiveAlignmentChangedEvent>.Unsubscribe(this);
+            EventBus<CameraRotationChangedEvent>.Unsubscribe(this);
             UnregisterFromNodes();
         }
 
-        public void Initialize(PathNode a, PathNode b, float yaw, float tolerance = 3f) {
+        private void Start() {
+            var cam = Camera.main;
+            if (cam != null) {
+                var camCtrl = cam.GetComponent<IsometricCameraController>();
+                if (camCtrl != null) {
+                    CheckAlignment(camCtrl.CurrentYaw);
+                }
+            }
+        }
+
+        public void Initialize(PathNode a, PathNode b, float yaw, float tolerance = 3.5f) {
             nodeA = a;
             nodeB = b;
             targetYaw = yaw;
             angleTolerance = tolerance;
             RegisterToNodes();
+
+            var cam = Camera.main;
+            if (cam != null) {
+                var camCtrl = cam.GetComponent<IsometricCameraController>();
+                if (camCtrl != null) {
+                    CheckAlignment(camCtrl.CurrentYaw);
+                }
+            }
         }
 
         private void RegisterToNodes() {
@@ -61,11 +82,14 @@ namespace Grid {
         }
 
         public void OnEventRaised(PerspectiveAlignmentChangedEvent eventData) {
-            // Check if this event's target angle matches our target angle and is within tolerance
             float diff = Mathf.Abs(Mathf.DeltaAngle(eventData.TargetAngle, targetYaw));
             if (diff < 1f) {
                 SetActiveState(eventData.IsAligned);
             }
+        }
+
+        public void OnEventRaised(CameraRotationChangedEvent eventData) {
+            CheckAlignment(eventData.CurrentYaw);
         }
 
         public void SetActiveState(bool active) {

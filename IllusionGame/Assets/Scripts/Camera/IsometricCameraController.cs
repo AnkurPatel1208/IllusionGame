@@ -112,6 +112,13 @@ namespace CameraControl {
         }
 
         private void HandlePointerDragAndSwipe() {
+            // If user is actively dragging the rotary bridge / gear handle, do not drag camera!
+            if (Mechanics.RotaryBridgeController.IsAnyDragging) {
+                isPointerDown = false;
+                isDragging = false;
+                return;
+            }
+
             Vector2 currentPointerPos = Vector2.zero;
             bool pointerDownThisFrame = false;
             bool pointerHeld = false;

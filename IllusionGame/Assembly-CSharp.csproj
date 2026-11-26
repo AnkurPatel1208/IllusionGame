@@ -48,11 +48,14 @@
   <ItemGroup>
     <Compile Include="Assets/Scripts/Core/EventBus/EventBus.cs" />
     <Compile Include="Assets/Scripts/Gameplay/LevelManager.cs" />
+    <Compile Include="Assets/Scripts/Gameplay/LevelGoal.cs" />
     <Compile Include="Assets/Scripts/Camera/PerspectiveAlignmentManager.cs" />
     <Compile Include="Assets/Scripts/Core/EventBus/IEventListener.cs" />
     <Compile Include="Assets/Scripts/Grid/PerspectiveEdge.cs" />
     <Compile Include="Assets/Scripts/Gameplay/KeyItem.cs" />
     <Compile Include="Assets/Scripts/Grid/PathNode.cs" />
+    <Compile Include="Assets/Scripts/Level/Level2Builder.cs" />
+    <Compile Include="Assets/Scripts/Gameplay/RotaryBridgeController.cs" />
     <Compile Include="Assets/Scripts/Camera/IsometricCameraController.cs" />
     <Compile Include="Assets/Scripts/Player/PlayerController.cs" />
     <Compile Include="Assets/Scripts/Gameplay/ExitDoor.cs" />

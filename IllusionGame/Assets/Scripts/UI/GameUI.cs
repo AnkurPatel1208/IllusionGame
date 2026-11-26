@@ -115,20 +115,40 @@ namespace UI {
             InitStyles();
             Color originalColor = GUI.color;
 
+            if (levelManager == null) {
+                levelManager = FindFirstObjectByType<LevelManager>();
+            }
+            if (cameraController == null) {
+                var cam = Camera.main;
+                if (cam != null) cameraController = cam.GetComponent<IsometricCameraController>();
+            }
+
+            string currentLevelTitle = (levelManager != null && !string.IsNullOrEmpty(levelManager.LevelName))
+                ? levelManager.LevelName.ToUpper()
+                : "LEVEL 2 – THE ROTARY CITADEL";
+
+            string objectiveText;
+            if (currentLevelTitle.Contains("LEVEL 2") || currentLevelTitle.Contains("ROTARY")) {
+                objectiveText = !hasKey
+                    ? "Turn the gear wheel to reach the key, then align the summit path."
+                    : "Key collected! Ascend to the summit portal.";
+            } else {
+                objectiveText = !hasKey
+                    ? "Rotate camera to align platforms, then reach the key."
+                    : "Key collected! Cross back and enter the illuminated door.";
+            }
+
             bool isPortrait = Screen.width < Screen.height;
 
             if (isPortrait) {
-                // Portrait Layout: Clean, centered title and status badge
+                // Portrait Layout
                 titleStyle.alignment = TextAnchor.UpperCenter;
                 subtitleStyle.alignment = TextAnchor.UpperCenter;
 
                 float headerWidth = Mathf.Min(Screen.width - 40, 500);
                 GUILayout.BeginArea(new Rect((Screen.width - headerWidth) * 0.5f, 20, headerWidth, 75));
                 GUILayout.Label("ILLUSION", titleStyle);
-                GUILayout.Label("LEVEL 1 – THE PERSPECTIVE BRIDGE", subtitleStyle);
-                string objectiveText = !hasKey 
-                    ? "Rotate camera to align platforms, then reach the key."
-                    : "Key collected! Cross back and enter the illuminated door.";
+                GUILayout.Label(currentLevelTitle, subtitleStyle);
                 GUILayout.Label(objectiveText, subtitleStyle);
                 GUILayout.EndArea();
 
@@ -139,10 +159,7 @@ namespace UI {
                 originalColor = GUI.color;
                 if (isPerspectiveAligned) {
                     GUI.color = new Color(0.2f, 0.85f, 0.35f, 0.95f);
-                    GUI.Box(badgeRect, "✔  ALIGNED! Walk across bridge", statusBadgeStyle);
-                } else {
-                    GUI.color = new Color(0.9f, 0.25f, 0.25f, 0.95f);
-                    GUI.Box(badgeRect, "✖  NOT CONNECTED (Rotate to align)", statusBadgeStyle);
+                    GUI.Box(badgeRect, "✔  ALIGNED! Path is open", statusBadgeStyle);
                 }
                 GUI.color = originalColor;
 
@@ -153,30 +170,24 @@ namespace UI {
                     GUI.color = originalColor;
                 }
             } else {
-                // Landscape Layout: Header on left, badges on right
+                // Landscape Layout
                 titleStyle.alignment = TextAnchor.UpperLeft;
                 subtitleStyle.alignment = TextAnchor.UpperLeft;
 
-                GUILayout.BeginArea(new Rect(25, 20, 450, 100));
+                GUILayout.BeginArea(new Rect(25, 20, 520, 100));
                 GUILayout.Label("ILLUSION", titleStyle);
-                GUILayout.Label("LEVEL 1 – THE PERSPECTIVE BRIDGE", subtitleStyle);
-                string objectiveText = !hasKey 
-                    ? "Rotate camera to align platforms, then reach the key."
-                    : "Key collected! Cross back and enter the illuminated door.";
+                GUILayout.Label(currentLevelTitle, subtitleStyle);
                 GUILayout.Label(objectiveText, subtitleStyle);
                 GUILayout.EndArea();
 
-                float badgeWidth = 210;
+                float badgeWidth = 220;
                 float badgeHeight = 55;
                 Rect badgeRect = new Rect(Screen.width - badgeWidth - 25, 25, badgeWidth, badgeHeight);
 
                 originalColor = GUI.color;
                 if (isPerspectiveAligned) {
                     GUI.color = new Color(0.2f, 0.85f, 0.35f, 0.95f);
-                    GUI.Box(badgeRect, "✔  ALIGNED!\nWalk across the bridge", statusBadgeStyle);
-                } else {
-                    GUI.color = new Color(0.9f, 0.25f, 0.25f, 0.95f);
-                    GUI.Box(badgeRect, "✖  NOT CONNECTED\nRotate camera to align", statusBadgeStyle);
+                    GUI.Box(badgeRect, "✔  ALIGNED!\nPath is open", statusBadgeStyle);
                 }
                 GUI.color = originalColor;
 
@@ -188,7 +199,7 @@ namespace UI {
                 }
             }
 
-            // 4. Camera Controls (Bottom Center)
+            // Camera Controls (Bottom Center)
             float controlWidth = Mathf.Min(Screen.width - 40, 360);
             float controlHeight = 55;
             Rect controlRect = new Rect((Screen.width - controlWidth) * 0.5f, Screen.height - controlHeight - 20, controlWidth, controlHeight);
@@ -208,41 +219,42 @@ namespace UI {
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
 
-            // 5. Reset button
-            float resetX = isPortrait ? 15 : 25;
-            float resetY = isPortrait ? (Screen.height - controlHeight - 65) : (Screen.height - 50);
-            if (GUI.Button(new Rect(resetX, resetY, 95, 35), "↺ Reset", buttonStyle)) {
-                if (levelManager != null) {
-                    levelManager.RestartLevel();
-                } else {
-                    EventBus<ResetLevelEvent>.Raise(new ResetLevelEvent());
-                }
+            // Reset Button (Bottom Left)
+            Rect resetRect = new Rect(20, Screen.height - 55, 90, 35);
+            if (GUI.Button(resetRect, "↺ Reset", buttonStyle)) {
+                if (levelManager != null) levelManager.RestartLevel();
             }
 
-            // 6. Level Complete Modal
+            // Completion Modal Overlay
             if (isLevelCompleted) {
-                float modalWidth = 380;
-                float modalHeight = 200;
+                GUI.color = new Color(0f, 0f, 0f, 0.65f);
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+                GUI.color = originalColor;
+
+                float modalWidth = Mathf.Min(Screen.width - 60, 420);
+                float modalHeight = 220;
                 Rect modalRect = new Rect((Screen.width - modalWidth) * 0.5f, (Screen.height - modalHeight) * 0.5f, modalWidth, modalHeight);
 
-                GUI.color = new Color(0.1f, 0.12f, 0.16f, 0.97f);
+                GUI.color = new Color(0.12f, 0.16f, 0.22f, 0.95f);
                 GUI.Box(modalRect, GUIContent.none, modalBoxStyle);
                 GUI.color = originalColor;
 
-                GUILayout.BeginArea(modalRect);
-                GUILayout.Space(25);
-                GUILayout.Label("LEVEL COMPLETE!", completionTitleStyle);
-                GUILayout.Space(10);
-                GUILayout.Label("Reality is Perspective.", subtitleStyle);
-                GUILayout.Space(25);
+                GUILayout.BeginArea(new Rect(modalRect.x + 20, modalRect.y + 20, modalWidth - 40, modalHeight - 40));
+                GUILayout.Label("LEVEL COMPLETE", completionTitleStyle);
+                GUILayout.Space(12);
 
-                if (GUILayout.Button("Play Again", buttonStyle, GUILayout.Height(45))) {
-                    if (levelManager != null) {
-                        levelManager.RestartLevel();
-                    } else {
-                        EventBus<ResetLevelEvent>.Raise(new ResetLevelEvent());
-                    }
+                GUIStyle msgStyle = new GUIStyle(GUI.skin.label) {
+                    fontSize = 15,
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = new Color(0.9f, 0.95f, 1f, 0.95f) }
+                };
+                GUILayout.Label("You solved the optical mystery and reached the summit sanctuary!", msgStyle);
+                GUILayout.Space(20);
+
+                if (GUILayout.Button("Replay Level", buttonStyle, GUILayout.Height(42))) {
+                    if (levelManager != null) levelManager.RestartLevel();
                 }
+
                 GUILayout.EndArea();
             }
         }
